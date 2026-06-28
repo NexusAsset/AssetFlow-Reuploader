@@ -1,6 +1,10 @@
 # Nexus Asset Reuploader
 
+[![Discord](https://img.shields.io/badge/Discord-Join%20our%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/j4NPfDwCtA)
+
 Re-upload your Roblox **animations, audio, and images** to your own account or group and have the new asset IDs swapped into your place automatically. A clean desktop app + a lightweight Studio plugin.
+
+**Need help? [Join our Discord](https://discord.gg/j4NPfDwCtA).**
 
 ## Download
 
