@@ -1,4 +1,8 @@
---!nonstrict
+<roblox version="4">
+	<Item class="Script" referent="RBX0">
+		<Properties>
+			<string name="Name">NexusReuploader</string>
+			<ProtectedString name="Source"><![CDATA[--!nonstrict
 
 local HttpService = game:GetService("HttpService")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
@@ -269,3 +273,7 @@ task.spawn(function()
 		task.wait(1.5)
 	end
 end)
+]]></ProtectedString>
+		</Properties>
+	</Item>
+</roblox>

@@ -336,7 +336,8 @@
 
           <div class="shot-step">
             <div class="shot-head"><div class="gnum">6</div><h3>Install the plugin and reupload</h3></div>
-            <p>Unzip the download, then copy <code>NexusReuploader.rbxmx</code> into <code>%LOCALAPPDATA%\Roblox\Plugins</code> and restart Studio. Open the <b>Nexus Reuploader</b> plugin, pick <b>Animation / Audio / Image</b>, and hit <b>Reupload</b> &mdash; new ids swap into your place automatically.</p>
+            <p>Click <b>Install plugin</b> to drop it into your Studio plugins folder automatically, then restart Studio. (Manual way: copy <code>NexusReuploader.rbxmx</code> into <code>%LOCALAPPDATA%\Roblox\Plugins</code>.) Then open the <b>Nexus Reuploader</b> plugin, pick <b>Animation / Audio / Image</b>, and hit <b>Reupload</b> &mdash; new ids swap into your place automatically.</p>
+            <button class="btn" id="installPlugin" style="margin-bottom:13px"><i data-lucide="download"></i>Install plugin</button>
             <img class="shot" src="/faq/06-download.png" alt="Plugin download files" loading="lazy" />
           </div>
           <div class="note">Your API key gives access only to the permissions you pick. Never share it. Nexus stores it only on this machine and sends it only to Roblox, it is never shared with anyone.</div>
@@ -402,6 +403,12 @@
     $('gateAction').addEventListener('click',(e)=>{ e.preventDefault(); startSignin(); });
     $('sideSignin').addEventListener('click',()=>{ sessionStorage.removeItem('nexusSkip'); $('gate').classList.add('show'); startSignin(); });
     $('joinDiscord').addEventListener('click',()=>{ fetch('/discord/invite').catch(()=>{}); });
+    $('installPlugin').addEventListener('click',async()=>{
+      const b=$('installPlugin'); b.disabled=true;
+      try{ const r=await fetch('/install-plugin'); if(r.ok){ await r.json(); toast('Plugin installed. Restart Studio to load it.','ok'); } else { toast('Install failed: '+(await r.text()),'fail'); } }
+      catch(e){ toast('Install failed','fail'); }
+      b.disabled=false;
+    });
     loadSession();
   });
   const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));

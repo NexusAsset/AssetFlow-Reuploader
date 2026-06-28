@@ -17,6 +17,7 @@ import (
 	"assetreuploader/internal/download"
 	"assetreuploader/internal/opencloud"
 	"assetreuploader/internal/roblox"
+	"assetreuploader/internal/spoofer"
 )
 
 const (
@@ -37,6 +38,7 @@ type reuploadRequest struct {
 	IsGroup    bool   `json:"isGroup"`
 	UniverseID string `json:"universeId"`
 	AssetType  string `json:"assetType"`
+	PlaceID    string `json:"placeId"`
 	Items      []item `json:"items"`
 }
 type reuploadResponse struct {
@@ -56,6 +58,7 @@ type Activity struct {
 type Server struct {
 	up         *opencloud.Uploader
 	dl         *download.Downloader
+	sp         *spoofer.Resolver
 	store      *accounts.Store
 	keyPath    string
 	cookiePath string
@@ -86,7 +89,7 @@ type job struct {
 }
 
 func New(up *opencloud.Uploader, dl *download.Downloader, store *accounts.Store, keyPath, cookiePath string) *Server {
-	s := &Server{up: up, dl: dl, store: store, keyPath: keyPath, cookiePath: cookiePath}
+	s := &Server{up: up, dl: dl, sp: spoofer.New(), store: store, keyPath: keyPath, cookiePath: cookiePath}
 	if b, err := os.ReadFile(targetFile); err == nil {
 		_ = json.Unmarshal(b, &s.target)
 	}
@@ -418,6 +421,8 @@ func (s *Server) handleReupload(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s%s%s", cCyan, head, cReset)
 	s.push("info", head)
 
+	s.prefetch(&req, pool)
+
 	const workers = 4
 	var mu sync.Mutex // guards next, curAcc, stopAll, ok, fail, and the resp maps
 	next, curAcc, ok, fail := 0, 0, 0, 0
@@ -548,6 +553,42 @@ func (s *Server) handleReupload(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 	log.Printf("%s%s%s", cGreen, summary, cReset)
 	writeJSON(w, resp)
+}
+
+func (s *Server) prefetch(req *reuploadRequest, pool []accounts.Account) {
+	need := make([]string, 0, len(req.Items))
+	idx := make(map[string]int, len(req.Items))
+	for i := range req.Items {
+		idx[req.Items[i].ID] = i
+		if req.Items[i].DataB64 == "" {
+			need = append(need, req.Items[i].ID)
+		}
+	}
+	if len(need) == 0 {
+		return
+	}
+	cookie := downloadCookie(pool, readTrim(s.cookiePath))
+	if cookie == "" {
+		return
+	}
+	got, _ := s.sp.Resolve(cookie, req.PlaceID, need)
+	for id, data := range got {
+		if i, ok := idx[id]; ok {
+			req.Items[i].DataB64 = base64.StdEncoding.EncodeToString(data)
+		}
+	}
+	if len(got) > 0 {
+		s.push("info", fmt.Sprintf("Fetched %d/%d assets via creator-place spoofing.", len(got), len(need)))
+	}
+}
+
+func downloadCookie(pool []accounts.Account, fallback string) string {
+	for _, a := range pool {
+		if c := strings.TrimSpace(a.Cookie); c != "" {
+			return c
+		}
+	}
+	return strings.TrimSpace(fallback)
 }
 
 func (s *Server) uploadOne(acc accounts.Account, assetType string, it item) (string, error) {

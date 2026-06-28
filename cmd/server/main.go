@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +27,9 @@ var iconPNG []byte
 
 //go:embed faq/*.png
 var faqFS embed.FS
+
+//go:embed NexusReuploader.rbxmx
+var pluginRBXMX []byte
 
 func main() {
 	enableANSIColors()
@@ -57,6 +62,24 @@ func main() {
 	mux := srv.Routes()
 	registerDiscordAuth(mux, port)
 	mux.Handle("/faq/", http.FileServer(http.FS(faqFS)))
+	mux.HandleFunc("/install-plugin", func(w http.ResponseWriter, r *http.Request) {
+		dir := robloxPluginsDir()
+		if dir == "" {
+			http.Error(w, "could not locate your Roblox Plugins folder", http.StatusInternalServerError)
+			return
+		}
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		p := filepath.Join(dir, "NexusReuploader.rbxmx")
+		if err := os.WriteFile(p, pluginRBXMX, 0o644); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"ok":true,"path":%q}`, p)
+	})
 	mux.HandleFunc("/icon.png", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("Cache-Control", "max-age=86400")
@@ -115,8 +138,30 @@ func originGuard(next http.Handler, port int) http.Handler {
 	})
 }
 
+func robloxPluginsDir() string {
+	if runtime.GOOS == "darwin" {
+		home, _ := os.UserHomeDir()
+		if home == "" {
+			return ""
+		}
+		return filepath.Join(home, "Library", "Application Support", "Roblox", "Plugins")
+	}
+	la := os.Getenv("LOCALAPPDATA")
+	if la == "" {
+		return ""
+	}
+	return filepath.Join(la, "Roblox", "Plugins")
+}
+
 func openBrowser(url string) {
-	_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	switch runtime.GOOS {
+	case "darwin":
+		_ = exec.Command("open", url).Start()
+	case "linux":
+		_ = exec.Command("xdg-open", url).Start()
+	default:
+		_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	}
 }
 
 func loadConfig(path string) map[string]string {

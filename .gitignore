@@ -1,11 +1,17 @@
-*.exe
-*.exe~
-apikey.txt
+# secrets - never commit
 cookie.txt
+apikey.txt
 accounts.json
-session.json
 target.json
-config.ini
-*.log
+session.json
+
+# build output + local scratch
+*.exe
+*.rbxm
+/AssetReuploader
+.tools/
+sound_mapping.json
+nexus_upload.png
 shots/
-node_modules/
+test.out.log
+test.err.log
