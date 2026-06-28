@@ -1,6 +1,6 @@
 # Nexus Asset Reuploader
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20our%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/j4NPfDwCtA)
+[![Discord](https://img.shields.io/badge/Discord-Join%20our%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/j4NPfDwCtA) [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%20detections-brightgreen?logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/1061bf74c452062849b5727ed680f11534639bbb41fb1d7a8bf6f0d6f503da30)
 
 Re-upload your Roblox **animations, audio, and images** to your own account or group and have the new asset IDs swapped into your place automatically. A clean desktop app + a lightweight Studio plugin.
 
@@ -14,7 +14,7 @@ Re-upload your Roblox **animations, audio, and images** to your own account or g
 
 ## Windows flagged the download? (false positive)
 
-Windows Defender / SmartScreen may warn that this app is "a virus or potentially unwanted software." **It is a false positive.** Nexus is a Go program that handles your Roblox API key and login cookie *locally* to upload assets — that pattern trips antivirus heuristics even though the code is clean and runs only on your machine. A scan finds no actual malware.
+Windows Defender / SmartScreen may warn that this app is "a virus or potentially unwanted software." **It is a false positive.** Nexus is a Go program that handles your Roblox API key and login cookie *locally* to upload assets — that pattern trips antivirus heuristics even though the code is clean and runs only on your machine. A scan finds no actual malware — an independent [**VirusTotal scan shows it clean across all engines (0 detections)**](https://www.virustotal.com/gui/file/1061bf74c452062849b5727ed680f11534639bbb41fb1d7a8bf6f0d6f503da30), and the full source is public above for anyone to review.
 
 To run it:
 1. If Windows blocks it after extracting: open **Windows Security → Virus & threat protection → Protection history**, find the Nexus item, and click **Allow** / **Restore**.
