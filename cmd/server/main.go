@@ -31,6 +31,8 @@ var faqFS embed.FS
 //go:embed NexusReuploader.rbxmx
 var pluginRBXMX []byte
 
+const defaultKnownPlacesURL = "https://nexus-known-places.chatjust984.workers.dev"
+
 func main() {
 	enableANSIColors()
 	cfg := loadConfig("config.ini")
@@ -54,10 +56,15 @@ func main() {
 		}
 	}
 
+	kpURL := cfg["knownplaces_url"]
+	if strings.TrimSpace(kpURL) == "" {
+		kpURL = defaultKnownPlacesURL
+	}
+
 	up := opencloud.New()
 	dl := download.New()
 	store := accounts.Load(accountsPath)
-	srv := server.New(up, dl, store, keyPath, cookiePath, cfg["knownplaces_url"], cfg["knownplaces_key"])
+	srv := server.New(up, dl, store, keyPath, cookiePath, kpURL, cfg["knownplaces_key"])
 
 	mux := srv.Routes()
 	registerDiscordAuth(mux, port)
