@@ -37,6 +37,23 @@ The warning is being submitted to Microsoft for review, and a code-signed build 
 
    Then restart Roblox Studio.
 
+## macOS (beta)
+
+> macOS builds are provided but **not yet tested on real Mac hardware** — please report any issues in the Discord. On Mac the interface opens in your **default browser** (no separate window), and credentials are stored locally without OS-level encryption (Windows uses DPAPI; Keychain support is planned).
+
+1. **Install + run the app** — open **Terminal** and paste:
+   ```
+   mkdir -p ~/nexus-asset-reuploader && cd ~/nexus-asset-reuploader && curl -L -o nexus "https://github.com/NexusAsset/nexus-asset-reuploader/releases/latest/download/nexus-mac-$([ "$(uname -m)" = "arm64" ] && echo arm64 || echo amd64)" && chmod +x nexus && xattr -dr com.apple.quarantine nexus && ./nexus
+   ```
+   This grabs the right build for your Mac (Apple Silicon or Intel), clears the Gatekeeper quarantine, and launches it; the UI opens in your browser.
+2. **Install the Studio plugin** — paste in Terminal:
+   ```
+   mkdir -p ~/Library/Application\ Support/Roblox/Plugins && curl -L -o ~/Library/Application\ Support/Roblox/Plugins/NexusReuploader.rbxmx https://github.com/NexusAsset/nexus-asset-reuploader/releases/latest/download/NexusReuploader.rbxmx
+   ```
+   Then restart Roblox Studio.
+
+(Linux isn't supported — Roblox Studio doesn't run on Linux, so the plugin can't either.)
+
 ## Setup (one time)
 
 1. Create a Roblox **Open Cloud API key** at <https://create.roblox.com/dashboard/credentials>:
