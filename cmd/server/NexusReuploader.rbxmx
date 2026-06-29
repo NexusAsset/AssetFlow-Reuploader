@@ -102,6 +102,8 @@ local function collect(kind)
 		elseif kind == "Image" then
 			local props = IMG[d.ClassName]
 			if props then for _, p in ipairs(props) do add((d :: any)[p], d, p) end end
+		elseif kind == "Mesh" and (d:IsA("MeshPart") or d:IsA("SpecialMesh") or d:IsA("FileMesh")) then
+			add((d :: any).MeshId, d, "MeshId")
 		end
 	end
 	return byId

@@ -687,7 +687,7 @@ func (s *Server) uploadOne(acc accounts.Account, assetType string, it item) (str
 		name = "Reupload_" + it.ID
 	}
 	switch assetType {
-	case "Animation", "Model", "Audio", "Decal":
+	case "Animation", "Model", "Audio", "Decal", "Mesh":
 		return s.up.Upload(acc.APIKey, assetType, data, name, acc.IsGroup, acc.CreatorID)
 	default:
 		return "", fmt.Errorf("asset type %q not supported", assetType)

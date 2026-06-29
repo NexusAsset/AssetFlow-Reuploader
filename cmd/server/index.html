@@ -232,6 +232,7 @@
             <button class="rbtn" onclick="reup('Animation')"><i data-lucide="person-standing"></i>Animations</button>
             <button class="rbtn" onclick="reup('Audio')"><i data-lucide="music"></i>Sounds</button>
             <button class="rbtn" onclick="reup('Image')"><i data-lucide="image"></i>Images</button>
+            <button class="rbtn" onclick="reup('Mesh')"><i data-lucide="box"></i>Meshes</button>
           </div>
           <div class="rup-opts">
             <label class="chk"><input type="checkbox" id="skipOwned" checked> Skip assets you already own</label>
@@ -347,7 +348,7 @@
           <div class="faqq">Why does audio sometimes stop partway?</div>
           <div class="faqa">Roblox caps audio uploads at 100/month per account. Nexus detects the cap and rotates to your next account automatically. Add more under Accounts to keep going.</div>
           <div class="faqq">Do I need the cookie?</div>
-          <div class="faqa">Only for audio and images, which are pulled from the asset CDN. Animations are read directly inside Studio and need no cookie. Note: logging into Roblox in your browser expires the saved cookie, so re-paste it if uploads start failing.</div>
+          <div class="faqa">Yes - every type (animations, sounds, images, meshes) is pulled from the asset CDN using your cookie, so a valid cookie is required. Note: logging into Roblox in your browser expires the saved cookie, so re-paste it if reuploads start failing.</div>
           <div class="faqq">Is my account safe?</div>
           <div class="faqa">Your API key and cookie are stored only on this machine and are never sent anywhere except Roblox itself. Uploads use Roblox's official Open Cloud API.</div>
           <div class="faqq">Why did an asset get skipped?</div>
@@ -461,7 +462,7 @@
   }
   async function reup(type){
     if(!hasKey){ toast('No API key set - add one under Credentials first.','err'); return; }
-    if((type==='Audio'||type==='Image') && !hasCookie){ toast(type+' needs your cookie - add it under Credentials.','err'); return; }
+    if(!hasCookie){ toast(type+' needs your cookie - add it under Credentials (every type is fetched via the asset CDN).','err'); return; }
     const body={assetType:type, skipOwned:$('skipOwned').checked, creatorId:$('rup-creator').value.trim(), isGroup:(tgt==='group')};
     await fetch('/job',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     toast(pluginOn ? ('Reupload requested: '+type) : 'Queued - but the plugin is offline. Open it in Studio.', pluginOn?'':'err');
