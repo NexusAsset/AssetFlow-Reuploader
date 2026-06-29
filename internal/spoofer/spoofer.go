@@ -37,6 +37,8 @@ type Resolver struct {
 	sem         chan struct{}
 	mu          sync.Mutex
 	placesCache map[string][]string
+	seedCache   []string
+	seedLoaded  bool
 	backendURL  string
 	backendKey  string
 }
@@ -182,6 +184,9 @@ func (r *Resolver) resolveOnce(cookie, currentPlaceID string, ids []string) (map
 			for _, p := range r.places(cookie, creator) {
 				add(p)
 			}
+			for _, p := range r.seedPlaces() {
+				add(p)
+			}
 			if len(cand) == 0 {
 				mu.Lock()
 				for _, id := range cids {
@@ -280,6 +285,42 @@ func (r *Resolver) fetchAcrossPlaces(cookie string, places, ids []string) (map[s
 		fail[id] = m
 	}
 	return out, fail, won
+}
+
+func (r *Resolver) seedPlaces() []string {
+	r.mu.Lock()
+	if r.seedLoaded {
+		c := r.seedCache
+		r.mu.Unlock()
+		return c
+	}
+	r.mu.Unlock()
+	var places []string
+	if r.backendURL != "" {
+		req, _ := http.NewRequest("GET", r.backendURL+"/v1/seed-places", nil)
+		r.acquire()
+		resp, err := r.http.Do(req)
+		r.release()
+		if err == nil {
+			if resp.StatusCode == http.StatusOK {
+				var d struct {
+					Places []string `json:"places"`
+				}
+				if json.NewDecoder(resp.Body).Decode(&d) == nil {
+					places = d.Places
+				}
+			}
+			resp.Body.Close()
+		}
+	}
+	if len(places) > 15 {
+		places = places[:15]
+	}
+	r.mu.Lock()
+	r.seedCache = places
+	r.seedLoaded = true
+	r.mu.Unlock()
+	return places
 }
 
 func (r *Resolver) knownPlaces(ids []string) map[string][]string {
