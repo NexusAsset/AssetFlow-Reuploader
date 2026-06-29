@@ -335,6 +335,59 @@ func (r *Resolver) report(won map[string]string) {
 	}
 }
 
+func (r *Resolver) Dupes(creatorID string, ids []string) map[string]string {
+	out := map[string]string{}
+	if r.backendURL == "" || creatorID == "" || len(ids) == 0 {
+		return out
+	}
+	body, _ := json.Marshal(map[string]any{"creatorId": creatorID, "assetIds": ids})
+	req, _ := http.NewRequest("POST", r.backendURL+"/v1/dupes", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.acquire()
+	resp, err := r.http.Do(req)
+	r.release()
+	if err != nil {
+		return out
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return out
+	}
+	var d struct {
+		Result map[string]string `json:"result"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&d) == nil && d.Result != nil {
+		return d.Result
+	}
+	return out
+}
+
+func (r *Resolver) ReportDupes(creatorID string, mapping map[string]string) {
+	if r.backendURL == "" || creatorID == "" || len(mapping) == 0 {
+		return
+	}
+	type pair struct {
+		Old string `json:"old"`
+		New string `json:"new"`
+	}
+	pairs := make([]pair, 0, len(mapping))
+	for o, n := range mapping {
+		pairs = append(pairs, pair{o, n})
+	}
+	body, _ := json.Marshal(map[string]any{"creatorId": creatorID, "pairs": pairs})
+	req, _ := http.NewRequest("POST", r.backendURL+"/v1/dupe-report", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	if r.backendKey != "" {
+		req.Header.Set("x-nexus-key", r.backendKey)
+	}
+	r.acquire()
+	resp, err := r.http.Do(req)
+	r.release()
+	if err == nil {
+		resp.Body.Close()
+	}
+}
+
 func (r *Resolver) assetsInfo(cookie string, ids []string) (map[string]string, error) {
 	req, _ := http.NewRequest("GET", developBase+strings.Join(ids, ","), nil)
 	req.Header.Set("User-Agent", userAgent)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -122,4 +123,50 @@ func AvatarURL(id string, isGroup bool) string {
 		return GroupIconURL(id)
 	}
 	return HeadshotURL(id)
+}
+
+func AssetName(cookie, id string) string {
+	req, _ := http.NewRequest("GET", "https://economy.roblox.com/v2/assets/"+id+"/details", nil)
+	req.Header.Set("User-Agent", "RobloxStudio/WinInet")
+	if cookie != "" {
+		req.Header.Set("Cookie", ".ROBLOSECURITY="+cookie)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return ""
+	}
+	var d struct {
+		Name string `json:"Name"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&d) != nil {
+		return ""
+	}
+	return d.Name
+}
+
+func AssetNames(cookie string, ids []string) map[string]string {
+	out := map[string]string{}
+	var mu sync.Mutex
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
+	for _, id := range ids {
+		wg.Add(1)
+		go func(id string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			n := AssetName(cookie, id)
+			<-sem
+			if n != "" {
+				mu.Lock()
+				out[id] = n
+				mu.Unlock()
+			}
+		}(id)
+	}
+	wg.Wait()
+	return out
 }

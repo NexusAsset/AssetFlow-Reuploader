@@ -18,6 +18,7 @@ import (
 
 	"assetreuploader/internal/accounts"
 	"assetreuploader/internal/download"
+	"assetreuploader/internal/failcache"
 	"assetreuploader/internal/opencloud"
 	"assetreuploader/internal/server"
 )
@@ -73,6 +74,7 @@ func main() {
 	}
 	connToken := loadOrCreateSecret("connector.secret")
 	srv.SetConnectorToken(connToken)
+	srv.SetFailCache(failcache.Load("failcache.json"))
 
 	mux := srv.Routes()
 	registerDiscordAuth(mux, port)

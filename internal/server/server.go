@@ -15,6 +15,7 @@ import (
 
 	"assetreuploader/internal/accounts"
 	"assetreuploader/internal/download"
+	"assetreuploader/internal/failcache"
 	"assetreuploader/internal/opencloud"
 	"assetreuploader/internal/roblox"
 	"assetreuploader/internal/spoofer"
@@ -64,6 +65,7 @@ type Server struct {
 	cookiePath     string
 	uploadSpeed    int
 	connectorToken string
+	fc             *failcache.Store
 
 	mu                 sync.Mutex
 	feed               []Activity
@@ -109,6 +111,8 @@ func (s *Server) SetUploadSpeed(n int) {
 }
 
 func (s *Server) SetConnectorToken(t string) { s.connectorToken = strings.TrimSpace(t) }
+
+func (s *Server) SetFailCache(fc *failcache.Store) { s.fc = fc }
 
 // connectorAuthed verifies a request came from the real Nexus plugin. The plugin
 // sends X-Nexus-Token (injected at install). Empty token = guard disabled.
@@ -497,6 +501,44 @@ func (s *Server) handleReupload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dlCookies := s.downloaderCookies()
+
+	allIds := make([]string, 0, len(req.Items))
+	for _, it := range req.Items {
+		allIds = append(allIds, it.ID)
+	}
+	dupes := s.sp.Dupes(req.CreatorID, allIds)
+	fckey := req.PlaceID
+	if fckey == "" {
+		fckey = req.UniverseID
+	}
+	var failed map[string]bool
+	if s.fc != nil {
+		failed = s.fc.Failed(fckey, allIds)
+	}
+	work := make([]item, 0, len(req.Items))
+	reused := 0
+	for _, it := range req.Items {
+		if nid := dupes[it.ID]; nid != "" {
+			resp.Mapping[it.ID] = nid
+			reused++
+			continue
+		}
+		if failed[it.ID] {
+			resp.Errors[it.ID] = "skipped (previously failed for this game)"
+			continue
+		}
+		work = append(work, it)
+	}
+	req.Items = work
+	if reused > 0 {
+		s.push("ok", fmt.Sprintf("Reused %d already-reuploaded asset(s) - no quota spent.", reused))
+	}
+	if len(req.Items) == 0 {
+		s.push("info", "Nothing new to upload.")
+		writeJSON(w, resp)
+		return
+	}
+
 	head := fmt.Sprintf("Reuploading %d %s across %d uploader(s), %d downloader(s)...", len(req.Items), req.AssetType, len(pool), len(dlCookies))
 	log.Printf("%s%s%s", cCyan, head, cReset)
 	s.push("info", head)
@@ -629,6 +671,25 @@ func (s *Server) handleReupload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	newMap := map[string]string{}
+	var succeeded, newFails []string
+	genuineFail := !resp.Canceled && resp.QuotaReached == "" && !resp.AuthFailed
+	for _, it := range req.Items {
+		if nid := resp.Mapping[it.ID]; nid != "" {
+			newMap[it.ID] = nid
+			succeeded = append(succeeded, it.ID)
+		} else if genuineFail && resp.Errors[it.ID] != "" {
+			newFails = append(newFails, it.ID)
+		}
+	}
+	if len(newMap) > 0 {
+		s.sp.ReportDupes(req.CreatorID, newMap)
+	}
+	if s.fc != nil {
+		s.fc.Clear(fckey, succeeded)
+		s.fc.Mark(fckey, newFails)
+	}
+
 	summary := fmt.Sprintf("Done: %d reuploaded, %d failed.", ok, fail)
 	if resp.QuotaReached != "" {
 		summary = fmt.Sprintf("%d reuploaded, then all accounts hit quota.", ok)
@@ -654,9 +715,13 @@ func (s *Server) prefetch(req *reuploadRequest, cookies []string) {
 		return
 	}
 	got, _ := s.sp.Resolve(cookies, req.PlaceID, need)
+	names := roblox.AssetNames(cookies[0], need)
 	for id, data := range got {
 		if i, ok := idx[id]; ok {
 			req.Items[i].DataB64 = base64.StdEncoding.EncodeToString(data)
+			if n := names[id]; n != "" {
+				req.Items[i].Name = n
+			}
 		}
 	}
 	if len(got) > 0 {

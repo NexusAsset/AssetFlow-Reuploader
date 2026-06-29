@@ -16,3 +16,4 @@ shots/
 test.out.log
 test.err.log
 connector.secret
+failcache.json
