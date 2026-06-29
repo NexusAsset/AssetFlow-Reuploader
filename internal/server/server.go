@@ -309,21 +309,34 @@ type accountView struct {
 	AvatarUrl   string `json:"avatarUrl"`
 	HasCookie   bool   `json:"hasCookie"`
 	KeyTail     string `json:"keyTail"`
+	Role        string `json:"role"`
 }
 
 func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 	list := s.store.All()
 	views := make([]accountView, 0, len(list))
 	for i, a := range list {
-		v := accountView{Index: i, Name: a.Name, CreatorID: a.CreatorID, IsGroup: a.IsGroup, HasCookie: a.Cookie != ""}
+		role := "downloader"
+		if a.APIKey != "" {
+			role = "uploader"
+		}
+		v := accountView{Index: i, Name: a.Name, CreatorID: a.CreatorID, IsGroup: a.IsGroup, HasCookie: a.Cookie != "", Role: role}
 		if len(a.APIKey) >= 4 {
 			v.KeyTail = a.APIKey[len(a.APIKey)-4:]
 		}
-		if info, err := roblox.Resolve(a.CreatorID, a.IsGroup); err == nil {
-			v.Username = info.Name
-			v.DisplayName = info.DisplayName
+		if a.APIKey != "" && a.CreatorID != "" {
+			if info, err := roblox.Resolve(a.CreatorID, a.IsGroup); err == nil {
+				v.Username = info.Name
+				v.DisplayName = info.DisplayName
+			}
+			v.AvatarUrl = roblox.AvatarURL(a.CreatorID, a.IsGroup)
+		} else if a.Cookie != "" {
+			if p, err := roblox.Authenticated(a.Cookie); err == nil {
+				v.Username = p.Name
+				v.DisplayName = p.DisplayName
+				v.AvatarUrl = p.AvatarUrl
+			}
 		}
-		v.AvatarUrl = roblox.AvatarURL(a.CreatorID, a.IsGroup)
 		views = append(views, v)
 	}
 	writeJSON(w, map[string]any{"accounts": views})
@@ -343,23 +356,37 @@ func (s *Server) handleAccountAdd(w http.ResponseWriter, r *http.Request) {
 	a.APIKey = strings.TrimSpace(a.APIKey)
 	a.CreatorID = strings.TrimSpace(a.CreatorID)
 	a.Cookie = strings.TrimSpace(a.Cookie)
-	if a.APIKey == "" || a.CreatorID == "" {
-		writeJSON(w, map[string]any{"ok": false, "error": "API key and creator id are required"})
+	if a.APIKey == "" && a.Cookie == "" {
+		writeJSON(w, map[string]any{"ok": false, "error": "add an API key (uploader) or a cookie (downloader)"})
 		return
 	}
-	info, err := roblox.Resolve(a.CreatorID, a.IsGroup)
-	if err != nil {
-		writeJSON(w, map[string]any{"ok": false, "error": "could not find that " + creatorKind(a.IsGroup) + " id"})
-		return
-	}
-	if a.Name == "" {
-		a.Name = info.DisplayName
+	role := "downloader"
+	if a.APIKey != "" {
+		role = "uploader"
+		if a.CreatorID == "" {
+			writeJSON(w, map[string]any{"ok": false, "error": "an uploader needs a creator id"})
+			return
+		}
+		info, err := roblox.Resolve(a.CreatorID, a.IsGroup)
+		if err != nil {
+			writeJSON(w, map[string]any{"ok": false, "error": "could not find that " + creatorKind(a.IsGroup) + " id"})
+			return
+		}
+		if a.Name == "" {
+			a.Name = info.DisplayName
+		}
+	} else if a.Name == "" {
+		if p, perr := roblox.Authenticated(a.Cookie); perr == nil {
+			a.Name = p.DisplayName
+		} else {
+			a.Name = "Downloader"
+		}
 	}
 	if err := s.store.Add(a); err != nil {
 		writeJSON(w, map[string]any{"ok": false, "error": err.Error()})
 		return
 	}
-	s.push("info", "Account added: "+a.Name+" ("+creatorKind(a.IsGroup)+" "+a.CreatorID+")")
+	s.push("info", "Account added: "+a.Name+" ("+role+")")
 	writeJSON(w, map[string]any{"ok": true})
 }
 
@@ -389,17 +416,37 @@ func creatorKind(isGroup bool) string {
 	return "user"
 }
 
-func (s *Server) pool(req reuploadRequest) []accounts.Account {
-	if s.store.Count() > 0 {
-		return s.store.All()
+// uploaders are the accounts that upload via Open Cloud (rotated on quota).
+func (s *Server) uploaders(req reuploadRequest) []accounts.Account {
+	if ups := s.store.Uploaders(); len(ups) > 0 {
+		return ups
 	}
 	key := readTrim(s.keyPath)
 	if key == "" || req.CreatorID == "" {
 		return nil
 	}
 	return []accounts.Account{{
-		Name: "primary", APIKey: key, CreatorID: req.CreatorID, IsGroup: req.IsGroup, Cookie: readTrim(s.cookiePath),
+		Name: "primary", APIKey: key, CreatorID: req.CreatorID, IsGroup: req.IsGroup,
 	}}
+}
+
+// downloaderCookies are the cookies used to fetch assets (rotated per asset).
+// The primary cookie.txt is tried first, then any downloader accounts.
+func (s *Server) downloaderCookies() []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(c string) {
+		c = strings.TrimSpace(c)
+		if c != "" && !seen[c] {
+			seen[c] = true
+			out = append(out, c)
+		}
+	}
+	add(readTrim(s.cookiePath))
+	for _, c := range s.store.DownloaderCookies() {
+		add(c)
+	}
+	return out
 }
 
 func (s *Server) handleReupload(w http.ResponseWriter, r *http.Request) {
@@ -414,18 +461,19 @@ func (s *Server) handleReupload(w http.ResponseWriter, r *http.Request) {
 	defer func() { s.mu.Lock(); s.busy = false; s.mu.Unlock() }()
 
 	resp := reuploadResponse{Mapping: map[string]string{}, Errors: map[string]string{}}
-	pool := s.pool(req)
+	pool := s.uploaders(req)
 	if len(pool) == 0 {
-		s.push("fail", "No accounts configured. Add one in Connected Accounts, or set an API key.")
+		s.push("fail", "No uploader configured. Add an account with an API key in Connected Accounts, or set an API key.")
 		writeJSON(w, resp)
 		return
 	}
 
-	head := fmt.Sprintf("Reuploading %d %s across %d account(s)...", len(req.Items), req.AssetType, len(pool))
+	dlCookies := s.downloaderCookies()
+	head := fmt.Sprintf("Reuploading %d %s across %d uploader(s), %d downloader(s)...", len(req.Items), req.AssetType, len(pool), len(dlCookies))
 	log.Printf("%s%s%s", cCyan, head, cReset)
 	s.push("info", head)
 
-	s.prefetch(&req, pool)
+	s.prefetch(&req, dlCookies)
 
 	const workers = 4
 	var mu sync.Mutex // guards next, curAcc, stopAll, ok, fail, and the resp maps
@@ -559,7 +607,7 @@ func (s *Server) handleReupload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, resp)
 }
 
-func (s *Server) prefetch(req *reuploadRequest, pool []accounts.Account) {
+func (s *Server) prefetch(req *reuploadRequest, cookies []string) {
 	need := make([]string, 0, len(req.Items))
 	idx := make(map[string]int, len(req.Items))
 	for i := range req.Items {
@@ -568,31 +616,18 @@ func (s *Server) prefetch(req *reuploadRequest, pool []accounts.Account) {
 			need = append(need, req.Items[i].ID)
 		}
 	}
-	if len(need) == 0 {
+	if len(need) == 0 || len(cookies) == 0 {
 		return
 	}
-	cookie := downloadCookie(pool, readTrim(s.cookiePath))
-	if cookie == "" {
-		return
-	}
-	got, _ := s.sp.Resolve(cookie, req.PlaceID, need)
+	got, _ := s.sp.Resolve(cookies, req.PlaceID, need)
 	for id, data := range got {
 		if i, ok := idx[id]; ok {
 			req.Items[i].DataB64 = base64.StdEncoding.EncodeToString(data)
 		}
 	}
 	if len(got) > 0 {
-		s.push("info", fmt.Sprintf("Fetched %d/%d assets via creator-place spoofing.", len(got), len(need)))
+		s.push("info", fmt.Sprintf("Fetched %d/%d assets via place spoofing across %d downloader(s).", len(got), len(need), len(cookies)))
 	}
-}
-
-func downloadCookie(pool []accounts.Account, fallback string) string {
-	for _, a := range pool {
-		if c := strings.TrimSpace(a.Cookie); c != "" {
-			return c
-		}
-	}
-	return strings.TrimSpace(fallback)
 }
 
 func (s *Server) uploadOne(acc accounts.Account, assetType string, it item) (string, error) {

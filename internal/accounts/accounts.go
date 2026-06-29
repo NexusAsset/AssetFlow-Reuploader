@@ -52,12 +52,41 @@ func (s *Store) Add(a Account) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, e := range s.list {
-		if e.APIKey == a.APIKey {
+		if a.APIKey != "" && e.APIKey == a.APIKey {
 			return fmt.Errorf("that API key is already added")
+		}
+		if a.APIKey == "" && a.Cookie != "" && e.Cookie == a.Cookie {
+			return fmt.Errorf("that downloader cookie is already added")
 		}
 	}
 	s.list = append(s.list, a)
 	return s.save()
+}
+
+// Uploaders are accounts that can upload (have an Open Cloud API key).
+func (s *Store) Uploaders() []Account {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []Account
+	for _, a := range s.list {
+		if a.APIKey != "" {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// DownloaderCookies are the cookies of accounts that can fetch assets.
+func (s *Store) DownloaderCookies() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []string
+	for _, a := range s.list {
+		if a.Cookie != "" {
+			out = append(out, a.Cookie)
+		}
+	}
+	return out
 }
 
 func (s *Store) Remove(idx int) error {

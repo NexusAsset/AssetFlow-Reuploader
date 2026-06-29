@@ -278,12 +278,12 @@
         <div class="phead"><h1>Connected Accounts</h1><p>Multiply your quota by rotating across accounts.</p></div>
         <div class="card" style="margin-bottom:16px">
           <h2><i data-lucide="layers"></i>Rotation pool</h2>
-          <p class="desc">Roblox's audio quota is <b>per account</b> (100/month). Add alt-account keys that all point at <b>your game's group</b>: when one runs out, Nexus moves to the next, and every asset still lands in your game. No grant, no other reuploader does this.</p>
+          <p class="desc">Two roles, like the pros. <b>Uploaders</b> (Open Cloud key) take turns uploading - Roblox's audio quota is per account (100/month), so when one runs out Nexus moves to the next and every asset still lands in your game. <b>Downloaders</b> (cookie) take turns fetching - different accounts can access different assets, so adding alts reaches more.</p>
           <div id="accountList"></div>
         </div>
         <div class="card">
           <h2><i data-lucide="user-plus"></i>Add an account</h2>
-          <p class="desc">Each account needs its own Open Cloud key (<b>asset:write</b>). Cookie only if it will upload audio or images.</p>
+          <p class="desc"><b>Uploader:</b> fill creator id + Open Cloud key (<b>asset:write</b>). <b>Downloader:</b> paste just a cookie (leave key/creator blank). An account with both does both.</p>
           <div class="grid2">
             <div><label>Creator id</label><input id="acc-id" placeholder="user id or group id"></div>
             <button class="btn g" id="acc-type" onclick="toggleType()" style="height:42px">User</button>
@@ -477,8 +477,8 @@
         <div class="acc">
           ${a.avatarUrl?`<img class="acc-ava" src="${a.avatarUrl}" alt="">`:`<div class="acc-ava">${esc((a.displayName||a.username||a.name||'?').slice(0,1).toUpperCase())}</div>`}
           <div class="acc-main">
-            <div class="acc-name">${esc(a.displayName||a.name||'Unknown')} <span class="badge ${a.isGroup?'grp':'usr'}">${a.isGroup?'Group':'User'}</span></div>
-            <div class="acc-sub">${a.username?('@'+esc(a.username)+' · '):''}id ${esc(a.creatorId)} · key ••••${esc(a.keyTail||'----')}${a.hasCookie?' · cookie ✓':''}</div>
+            <div class="acc-name">${esc(a.displayName||a.name||'Unknown')} <span class="badge ${a.role==='uploader'?'usr':'grp'}">${a.role==='uploader'?'Uploader':'Downloader'}</span></div>
+            <div class="acc-sub">${a.role==='uploader' ? `${a.username?('@'+esc(a.username)+' · '):''}${a.isGroup?'group':'user'} ${esc(a.creatorId)} · key ••••${esc(a.keyTail||'----')}${a.hasCookie?' · cookie ✓':''}` : `${a.username?('@'+esc(a.username)+' · '):''}cookie ✓ · fetches assets`}</div>
           </div>
           <button class="rm" onclick="removeAccount(${a.index})"><i data-lucide="trash-2" style="width:15px;height:15px"></i></button>
         </div>`).join('');
@@ -488,10 +488,11 @@
   async function addAccount(){
     const msg=$('acc-msg');
     const body={ creatorId:$('acc-id').value.trim(), isGroup:accType==='group', apiKey:$('acc-key').value.trim(), cookie:$('acc-cookie').value.trim(), name:$('acc-name').value.trim() };
-    if(!body.creatorId||!body.apiKey){ msg.style.color='var(--red)'; msg.textContent='Creator id and API key are required.'; return; }
+    if(!body.apiKey && !body.cookie){ msg.style.color='var(--red)'; msg.textContent='Add an API key (uploader) or a cookie (downloader).'; return; }
+    if(body.apiKey && !body.creatorId){ msg.style.color='var(--red)'; msg.textContent='An uploader needs a creator id.'; return; }
     msg.style.color='var(--muted)'; msg.textContent='Checking…';
     const r=await(await fetch('/accounts/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
-    if(r.ok){ msg.style.color='var(--violet)'; msg.textContent='Added.'; toast('Attached '+(body.isGroup?'group':'user')+' '+body.creatorId); ['acc-id','acc-key','acc-cookie','acc-name'].forEach(i=>$(i).value=''); loadAccounts(); }
+    if(r.ok){ msg.style.color='var(--violet)'; msg.textContent='Added.'; toast(body.apiKey?('Attached '+(body.isGroup?'group':'user')+' '+body.creatorId):'Added downloader account'); ['acc-id','acc-key','acc-cookie','acc-name'].forEach(i=>$(i).value=''); loadAccounts(); }
     else{ msg.style.color='var(--red)'; msg.textContent=r.error||'Failed.'; toast(r.error||'Could not add account','err'); }
   }
   async function removeAccount(i){

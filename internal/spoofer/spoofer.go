@@ -64,7 +64,44 @@ type loc struct {
 	err string
 }
 
-func (r *Resolver) Resolve(cookie, currentPlaceID string, ids []string) (map[string][]byte, map[string]string) {
+// Resolve fetches each asset, rotating through downloader cookies: assets that
+// one account can't access are retried with the next (different accounts have
+// access to different assets).
+func (r *Resolver) Resolve(cookies []string, currentPlaceID string, ids []string) (map[string][]byte, map[string]string) {
+	out := map[string][]byte{}
+	if len(cookies) == 0 {
+		errs := map[string]string{}
+		for _, id := range ids {
+			errs[id] = "no downloader cookie set"
+		}
+		return out, errs
+	}
+	remaining := append([]string(nil), ids...)
+	lastErrs := map[string]string{}
+	for _, cookie := range cookies {
+		if len(remaining) == 0 {
+			break
+		}
+		got, errs := r.resolveCookie(cookie, currentPlaceID, remaining)
+		var still []string
+		for _, id := range remaining {
+			if b, ok := got[id]; ok {
+				out[id] = b
+			} else {
+				still = append(still, id)
+				lastErrs[id] = errs[id]
+			}
+		}
+		remaining = still
+	}
+	finalErrs := map[string]string{}
+	for _, id := range remaining {
+		finalErrs[id] = lastErrs[id]
+	}
+	return out, finalErrs
+}
+
+func (r *Resolver) resolveCookie(cookie, currentPlaceID string, ids []string) (map[string][]byte, map[string]string) {
 	out, errs, won := r.resolveOnce(cookie, currentPlaceID, ids)
 
 	innerOf := map[string]string{}
