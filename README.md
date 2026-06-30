@@ -1,88 +1,31 @@
-# Nexus Asset Reuploader
+# AssetFlow Reuploader
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20our%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/j4NPfDwCtA) [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%20detections-brightgreen?logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/1061bf74c452062849b5727ed680f11534639bbb41fb1d7a8bf6f0d6f503da30)
-
-Re-upload your Roblox **animations, audio, and images** to your own account or group and have the new asset IDs swapped into your place automatically. A clean desktop app + a lightweight Studio plugin.
-
-**Need help? [Join our Discord](https://discord.gg/j4NPfDwCtA).**
+Reupload Roblox assets you don't own (animations, sounds, images, meshes) straight to your own account or group, then swap the new ids into your place automatically. A local desktop app plus a thin Roblox Studio plugin.
 
 ## Download
 
-**[Download the latest release](../../releases/latest)** → grab `NexusAssetReuploader-v1.0.zip`.
+Grab the latest from [Releases](https://github.com/NexusAsset/AssetFlow-Reuploader/releases/latest):
 
-> Windows may show a SmartScreen warning on first run (the app isn't code-signed yet) — click **More info → Run anyway**.
+- **Windows**: `AssetFlowReuploader-v1.1.0.zip` (or the bare `AssetFlowReuploader.exe`)
+- **macOS (beta)**: `assetflow-mac-arm64` (Apple Silicon) or `assetflow-mac-amd64` (Intel)
 
-## Windows flagged the download? (false positive)
+The app checks for updates on launch and can update itself (and the plugin) in one click.
 
-Windows Defender / SmartScreen may warn that this app is "a virus or potentially unwanted software." **It is a false positive.** Nexus is a Go program that handles your Roblox API key and login cookie *locally* to upload assets — that pattern trips antivirus heuristics even though the code is clean and runs only on your machine. A scan finds no actual malware — an independent [**VirusTotal scan shows it clean across all engines (0 detections)**](https://www.virustotal.com/gui/file/1061bf74c452062849b5727ed680f11534639bbb41fb1d7a8bf6f0d6f503da30), and the full source is public above for anyone to review.
+## Setup
 
-To run it:
-1. If Windows blocks it after extracting: open **Windows Security → Virus & threat protection → Protection history**, find the Nexus item, and click **Allow** / **Restore**.
-2. Or right-click `Nexus Asset Reuploader.exe` → **Properties** → tick **Unblock** → OK.
-3. Confirm you have the genuine file: its **SHA-256 must match** the value on the release page (see "Verify your download" below).
+1. Run the app. It opens the AssetFlow dashboard locally.
+2. Create an Open Cloud API key at create.roblox.com with `asset:read`, `asset:write`, and `asset-permissions:write`. Paste it into Credentials and Save. (Full steps with screenshots are in the app under Setup & FAQ.)
+3. Pick your upload target (your profile or a group).
+4. Click **Install plugin**, restart Studio, open the plugin, pick a type, and hit Reupload.
 
-The warning is being submitted to Microsoft for review, and a code-signed build is planned to remove it entirely.
+## Your account is safe
 
-## Install
-
-1. Unzip the download anywhere.
-2. Run **`Nexus Asset Reuploader.exe`**.
-3. Install the Studio plugin — pick whichever is easiest:
-   - **One command** — paste into Command Prompt:
-     ```
-     mkdir "%LOCALAPPDATA%\Roblox\Plugins" 2>nul & curl -L -o "%LOCALAPPDATA%\Roblox\Plugins\NexusReuploader.rbxmx" https://github.com/NexusAsset/nexus-asset-reuploader/releases/latest/download/NexusReuploader.rbxmx
-     ```
-   - **Double-click installer** — download [`install-plugin.bat`](https://github.com/NexusAsset/nexus-asset-reuploader/releases/latest/download/install-plugin.bat) and run it.
-   - **Manual** — copy `NexusReuploader.rbxmx` into `%LOCALAPPDATA%\Roblox\Plugins`.
-
-   Then restart Roblox Studio.
-
-## macOS (beta)
-
-> macOS builds are provided but **not yet tested on real Mac hardware** — please report any issues in the Discord. On Mac the interface opens in your **default browser** (no separate window), and credentials are stored locally without OS-level encryption (Windows uses DPAPI; Keychain support is planned).
-
-1. **Install + run the app** — open **Terminal** and paste:
-   ```
-   mkdir -p ~/nexus-asset-reuploader && cd ~/nexus-asset-reuploader && curl -L -o nexus "https://github.com/NexusAsset/nexus-asset-reuploader/releases/latest/download/nexus-mac-$([ "$(uname -m)" = "arm64" ] && echo arm64 || echo amd64)" && chmod +x nexus && xattr -dr com.apple.quarantine nexus && ./nexus
-   ```
-   This grabs the right build for your Mac (Apple Silicon or Intel), clears the Gatekeeper quarantine, and launches it; the UI opens in your browser.
-2. **Install the Studio plugin** — paste in Terminal:
-   ```
-   mkdir -p ~/Library/Application\ Support/Roblox/Plugins && curl -L -o ~/Library/Application\ Support/Roblox/Plugins/NexusReuploader.rbxmx https://github.com/NexusAsset/nexus-asset-reuploader/releases/latest/download/NexusReuploader.rbxmx
-   ```
-   Then restart Roblox Studio.
-
-(Linux isn't supported — Roblox Studio doesn't run on Linux, so the plugin can't either.)
-
-## Setup (one time)
-
-1. Create a Roblox **Open Cloud API key** at <https://create.roblox.com/dashboard/credentials>:
-   - Permissions: `asset:read`, `asset:write`, `asset-permissions:write`
-   - **Restrict by Creator: OFF**
-2. Paste the key into the app, pick your target (your profile or a group), and Save.
-
-The in-app **Setup & FAQ** tab has the full walkthrough with screenshots.
-
-## Use
-
-In Studio, open the **Nexus Reuploader** plugin, pick **Animation / Audio / Image**, and hit **Reupload**. New IDs swap into your place automatically; watch progress in the app's Activity console.
-
-## Privacy & security
-
-- Runs entirely on your PC and talks only to Roblox.
-- Your API key and cookie are **encrypted at rest** (Windows DPAPI) and never leave your machine.
-- Never share your API key with anyone.
+Your API key and cookie are stored only on your machine (encrypted at rest on Windows) and are only ever sent to Roblox's official APIs. Nothing is shared. The full source is here so you can verify that.
 
 ## Verify your download
 
-Each release lists a **SHA-256** checksum. To confirm your download wasn't tampered with:
+Each release ships a `CHECKSUM.txt` with SHA-256 hashes. New unsigned apps can trip Windows SmartScreen or a generic antivirus heuristic; if that happens, choose "Run anyway" and verify the hash.
 
-```powershell
-Get-FileHash .\NexusAssetReuploader-v1.0.zip -Algorithm SHA256
-```
+## Discord
 
-The result should match the value on the release page.
-
-## Support
-
-Join the Discord: <https://discord.gg/j4NPfDwCtA>
+Join the community for help and updates (invite in the app).
