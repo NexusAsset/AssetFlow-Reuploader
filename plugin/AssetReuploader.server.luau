@@ -7,7 +7,8 @@ local InsertService = game:GetService("InsertService")
 
 local PORT = 38073
 local BASE = ("http://127.0.0.1:%d"):format(PORT)
-local TOKEN = "NEXUS_CONNECTOR_TOKEN"
+local TOKEN = "ASSETFLOW_CONNECTOR_TOKEN"
+local PLUGIN_VERSION = "1.1.0"
 
 local IMG = {
 	Decal = { "Texture" }, Texture = { "Texture" },
@@ -18,12 +19,12 @@ local IMG = {
 	Sky = { "SkyboxBk", "SkyboxDn", "SkyboxFt", "SkyboxLf", "SkyboxRt", "SkyboxUp" },
 }
 
-local toolbar = plugin:CreateToolbar("Nexus")
-local button = toolbar:CreateButton("Nexus Reuploader", "Connect to the Nexus app", "rbxassetid://96192001462406")
+local toolbar = plugin:CreateToolbar("AssetFlow")
+local button = toolbar:CreateButton("AssetFlow Reuploader", "Connect to the AssetFlow app", "rbxassetid://134777439485347")
 button.ClickableWhenViewportHidden = true
 local widget = plugin:CreateDockWidgetPluginGui("AssetReuploaderWidget",
 	DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Float, false, false, 320, 384, 280, 320))
-widget.Title = "Nexus Reuploader"
+widget.Title = "AssetFlow Reuploader"
 
 local function make(class, props, parent)
 	local o = Instance.new(class)
@@ -32,7 +33,7 @@ local function make(class, props, parent)
 	return o
 end
 
-local PURPLE = Color3.fromRGB(139, 92, 246)
+local ACCENT = Color3.fromRGB(206, 209, 217)
 local BG = Color3.fromRGB(10, 10, 11)
 local CARD = Color3.fromRGB(21, 21, 23)
 local TXT = Color3.fromRGB(250, 250, 250)
@@ -45,7 +46,8 @@ local root = make("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = BG
 make("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16), PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 14) }, root)
 make("UIListLayout", { Padding = UDim.new(0, 9), SortOrder = Enum.SortOrder.LayoutOrder }, root)
 
-make("TextLabel", { Text = "NEXUS", LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, TextColor3 = TXT, Font = Enum.Font.GothamBold, TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left }, root)
+local titleLbl = make("TextLabel", { Text = "ASSETFLOW", LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, TextColor3 = TXT, Font = Enum.Font.GothamBold, TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left }, root)
+make("UIGradient", { Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(168, 168, 178)), Rotation = 90 }, titleLbl)
 make("TextLabel", { Text = "REUPLOADER", LayoutOrder = 2, Size = UDim2.new(1, 0, 0, 11), BackgroundTransparency = 1, TextColor3 = MUT, Font = Enum.Font.Gotham, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left }, root)
 
 local statusFrame = make("Frame", { LayoutOrder = 3, Size = UDim2.new(1, 0, 0, 50), BackgroundColor3 = CARD, BorderSizePixel = 0 }, root)
@@ -55,10 +57,10 @@ make("UICorner", { CornerRadius = UDim.new(1, 0) }, dot)
 local statusLbl = make("TextLabel", { Text = "Connecting...", Position = UDim2.new(0, 35, 0, 0), Size = UDim2.new(1, -46, 1, 0), BackgroundTransparency = 1, TextColor3 = TXT, Font = Enum.Font.GothamMedium, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left }, statusFrame)
 
 local connected = true
-local connBtn = make("TextButton", { LayoutOrder = 4, Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = PURPLE, BorderSizePixel = 0, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.GothamBold, TextSize = 13, Text = "Disconnect", AutoButtonColor = true }, root)
+local connBtn = make("TextButton", { LayoutOrder = 4, Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = ACCENT, BorderSizePixel = 0, TextColor3 = Color3.fromRGB(14, 14, 16), Font = Enum.Font.GothamBold, TextSize = 13, Text = "Disconnect", AutoButtonColor = true }, root)
 make("UICorner", { CornerRadius = UDim.new(0, 10) }, connBtn)
 
-make("TextLabel", { Text = "Pick what to reupload from the Nexus app on your screen.", LayoutOrder = 5, Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1, TextColor3 = MUT, Font = Enum.Font.Gotham, TextSize = 11, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left }, root)
+make("TextLabel", { Text = "Pick what to reupload from the AssetFlow app on your screen.", LayoutOrder = 5, Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1, TextColor3 = MUT, Font = Enum.Font.Gotham, TextSize = 11, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left }, root)
 
 local logBox = make("ScrollingFrame", { LayoutOrder = 6, Size = UDim2.new(1, 0, 1, -158), BackgroundColor3 = Color3.fromRGB(13, 13, 14), BorderSizePixel = 0, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 5 }, root)
 make("UICorner", { CornerRadius = UDim.new(0, 10) }, logBox)
@@ -77,7 +79,7 @@ local function plog(text, kind)
 	pcall(function()
 		HttpService:RequestAsync({
 			Url = BASE .. "/plugin-log", Method = "POST",
-			Headers = { ["Content-Type"] = "application/json", ["X-Nexus-Token"] = TOKEN },
+			Headers = { ["Content-Type"] = "application/json", ["X-AssetFlow-Token"] = TOKEN },
 			Body = HttpService:JSONEncode({ kind = kind or "info", text = text }),
 		})
 	end)
@@ -179,7 +181,7 @@ local function execute(j)
 		local ok, res = pcall(function()
 			return HttpService:RequestAsync({
 				Url = BASE .. "/reupload", Method = "POST",
-				Headers = { ["Content-Type"] = "application/json", ["X-Nexus-Token"] = TOKEN },
+				Headers = { ["Content-Type"] = "application/json", ["X-AssetFlow-Token"] = TOKEN },
 				Body = HttpService:JSONEncode({ creatorId = creatorId or "", isGroup = isGroup, universeId = tostring(game.GameId), placeId = tostring(game.PlaceId), assetType = wireType, items = chunk }),
 			})
 		end)
@@ -217,7 +219,7 @@ local function execute(j)
 		end
 		plog(("Resolved %d image(s); %d failed."):format(resolved, failed), failed > 0 and "fail" or "info")
 	end
-	local recording = ChangeHistoryService:TryBeginRecording("Nexus Reupload")
+	local recording = ChangeHistoryService:TryBeginRecording("AssetFlow Reupload")
 	local props, values, scripts, attrs = applyEverywhere(mapping, byId)
 	if recording then ChangeHistoryService:FinishRecording(recording, Enum.FinishRecordingOperation.Commit) end
 	local n = 0
@@ -231,9 +233,9 @@ end
 
 local function setStatus(state)
 	if state == true then
-		dot.BackgroundColor3 = GREEN; statusLbl.Text = "Connected to Nexus app"
+		dot.BackgroundColor3 = GREEN; statusLbl.Text = "Connected to AssetFlow app"
 	elseif state == false then
-		dot.BackgroundColor3 = RED; statusLbl.Text = "App offline - open Nexus"
+		dot.BackgroundColor3 = RED; statusLbl.Text = "App offline - open AssetFlow"
 	else
 		dot.BackgroundColor3 = GREY; statusLbl.Text = "Disconnected"
 	end
@@ -242,7 +244,8 @@ end
 connBtn.Activated:Connect(function()
 	connected = not connected
 	connBtn.Text = connected and "Disconnect" or "Connect"
-	connBtn.BackgroundColor3 = connected and PURPLE or Color3.fromRGB(38, 38, 42)
+	connBtn.BackgroundColor3 = connected and ACCENT or Color3.fromRGB(38, 38, 42)
+	connBtn.TextColor3 = connected and Color3.fromRGB(14, 14, 16) or Color3.fromRGB(250, 250, 250)
 	if not connected then setStatus(nil) end
 end)
 button.Click:Connect(function() widget.Enabled = not widget.Enabled end)
@@ -251,7 +254,7 @@ local busy = false
 task.spawn(function()
 	while true do
 		if connected then
-			local ok, res = pcall(function() return HttpService:RequestAsync({ Url = BASE .. "/job", Method = "GET", Headers = { ["X-Nexus-Token"] = TOKEN } }) end)
+			local ok, res = pcall(function() return HttpService:RequestAsync({ Url = BASE .. "/job", Method = "GET", Headers = { ["X-AssetFlow-Token"] = TOKEN, ["X-AssetFlow-Plugin-Version"] = PLUGIN_VERSION } }) end)
 			if ok and res.Success then
 				setStatus(true)
 				if not busy then

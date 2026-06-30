@@ -67,6 +67,10 @@ type Server struct {
 	connectorToken string
 	fc             *failcache.Store
 
+	appVersion    string
+	pluginVersion string
+	updateRepo    string
+
 	mu                 sync.Mutex
 	feed               []Activity
 	busy               bool
@@ -74,8 +78,18 @@ type Server struct {
 	pending            *job
 	pluginPing         time.Time
 	pluginWasConnected bool
+	pluginSeenVersion  string
 	canceled           bool
 	target             targetPref
+}
+
+// SetVersionInfo records the app + plugin versions and the GitHub repo to check
+// for updates (owner/name). The plugin reports its own version on /job so the app
+// can flag an outdated plugin.
+func (s *Server) SetVersionInfo(app, plugin, repo string) {
+	s.appVersion = strings.TrimSpace(app)
+	s.pluginVersion = strings.TrimSpace(plugin)
+	s.updateRepo = strings.TrimSpace(repo)
 }
 
 type targetPref struct {
@@ -114,10 +128,10 @@ func (s *Server) SetConnectorToken(t string) { s.connectorToken = strings.TrimSp
 
 func (s *Server) SetFailCache(fc *failcache.Store) { s.fc = fc }
 
-// connectorAuthed verifies a request came from the real Nexus plugin. The plugin
-// sends X-Nexus-Token (injected at install). Empty token = guard disabled.
+// connectorAuthed verifies a request came from the real AssetFlow plugin. The plugin
+// sends X-AssetFlow-Token (injected at install). Empty token = guard disabled.
 func (s *Server) connectorAuthed(r *http.Request) bool {
-	return s.connectorToken == "" || r.Header.Get("X-Nexus-Token") == s.connectorToken
+	return s.connectorToken == "" || r.Header.Get("X-AssetFlow-Token") == s.connectorToken
 }
 
 func (s *Server) push(kind, text string) {
@@ -164,6 +178,8 @@ func (s *Server) Routes() *http.ServeMux {
 	mux.HandleFunc("/plugin-log", s.handlePluginLog)
 	mux.HandleFunc("/cancel", s.handleCancel)
 	mux.HandleFunc("/target", s.handleTarget)
+	mux.HandleFunc("/update/check", s.handleUpdateCheck)
+	mux.HandleFunc("/update/apply", s.handleUpdateApply)
 	return mux
 }
 
@@ -220,6 +236,9 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 	reconnected := !s.pluginWasConnected
 	s.pluginWasConnected = true
 	s.pluginPing = time.Now()
+	if v := strings.TrimSpace(r.Header.Get("X-AssetFlow-Plugin-Version")); v != "" {
+		s.pluginSeenVersion = v
+	}
 	j := s.pending
 	s.pending = nil
 	s.mu.Unlock()
@@ -264,10 +283,12 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		s.pluginWasConnected = false
 	}
 	tgt := s.target
+	seen := s.pluginSeenVersion
 	s.mu.Unlock()
 	if disconnected {
 		s.push("info", "Plugin disconnected.")
 	}
+	pluginOutdated := pluginConnected && seen != "" && s.pluginVersion != "" && verLess(seen, s.pluginVersion)
 	writeJSON(w, map[string]any{
 		"hasKey":          fileHasContent(s.keyPath),
 		"hasCookie":       fileHasContent(s.cookiePath),
@@ -277,6 +298,10 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"pluginConnected": pluginConnected,
 		"creatorId":       tgt.CreatorID,
 		"isGroup":         tgt.IsGroup,
+		"appVersion":      s.appVersion,
+		"pluginVersion":   s.pluginVersion,
+		"pluginSeen":      seen,
+		"pluginOutdated":  pluginOutdated,
 		"feed":            feed,
 	})
 }

@@ -17,3 +17,6 @@ test.out.log
 test.err.log
 connector.secret
 failcache.json
+
+# local dev notes - not shipped
+CLAUDE.md

@@ -151,7 +151,7 @@ func registerDiscordAuth(mux *http.ServeMux, port int) {
 		saveSession(session)
 		sessMu.Unlock()
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write([]byte("<html><body style='background:#0a0a0b;color:#fafafa;font-family:Segoe UI,sans-serif;text-align:center;padding:64px'><h1 style='color:#8b5cf6'>Signed in</h1><p>Signed in as <b>" + name + "</b>. Close this tab and return to the Nexus app.</p></body></html>"))
+		_, _ = w.Write([]byte("<html><body style='background:#0a0a0b;color:#fafafa;font-family:Segoe UI,sans-serif;text-align:center;padding:64px'><h1 style='color:#d7dae2'>Signed in</h1><p>Signed in as <b>" + name + "</b>. Close this tab and return to the AssetFlow app.</p></body></html>"))
 	})
 
 	mux.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {

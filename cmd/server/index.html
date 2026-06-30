@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Nexus Reuploader</title>
+<title>AssetFlow Reuploader</title>
 <link rel="icon" href="/icon.png" />
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
@@ -12,7 +12,8 @@
     --mono:"Cascadia Code","SF Mono","Segoe UI Mono",Consolas,monospace;
     --bg:#0a0a0b; --surface:#151517; --surface2:#1e1e22; --recess:#0e0e10; --console:#0b0b0c;
     --txt:#fafafa; --muted:#8a8a92; --faint:#55555c;
-    --violet:#8b5cf6; --violet2:#7c3aed; --vdim:rgba(139,92,246,.13);
+    --violet:#e7e7ec; --violet2:#c2c2cb; --vdim:rgba(231,231,236,.18);
+    --chrome:linear-gradient(180deg,#fbfbfc 0%,#dadade 48%,#a9a9b2 100%); --chrome-edge:rgba(255,255,255,.5);
     --indigo:#a1a1aa; --red:#f87171; --green:#4ade80;
     --hi:inset 0 1px 0 rgba(255,255,255,.03);
     --lift:0 1px 2px rgba(0,0,0,.35);
@@ -28,7 +29,8 @@
     padding:26px 18px;display:flex;flex-direction:column;gap:28px;overflow:hidden;}
   .logo-row{display:flex;align-items:center;gap:12px;position:relative;z-index:1;}
   .logo-img{width:46px;height:46px;border-radius:13px;}
-  .wordmark{font-weight:800;font-size:20px;letter-spacing:2px;line-height:1;}
+  .wordmark{font-weight:800;font-size:20px;letter-spacing:1.5px;line-height:1;background:linear-gradient(110deg,#b6b6be 20%,#ffffff 50%,#b6b6be 80%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite;}
+  @keyframes shimmer{to{background-position:-220% 0;}}
   .wordsub{color:var(--muted);font-size:10.5px;letter-spacing:3px;text-transform:uppercase;margin-top:5px;}
   nav{display:flex;flex-direction:column;gap:3px;position:relative;z-index:1;}
   .nav{display:flex;align-items:center;gap:12px;background:none;border:none;color:var(--muted);font-family:inherit;
@@ -50,7 +52,8 @@
   @keyframes fade{from{opacity:0;transform:translateY(5px);}to{opacity:1;}}
 
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}
-  .tile{background:var(--surface);border-radius:16px;padding:19px 21px;position:relative;overflow:hidden;box-shadow:var(--hi),var(--lift);}
+  .tile{background:var(--surface);border-radius:16px;padding:19px 21px;position:relative;overflow:hidden;box-shadow:var(--hi),var(--lift);transition:transform .18s ease,box-shadow .18s ease;}
+  .tile:hover{transform:translateY(-2px);box-shadow:var(--hi),0 6px 18px rgba(0,0,0,.45);}
   .tile .ic{position:absolute;right:15px;top:15px;color:var(--faint);width:20px;height:20px;opacity:.55;}
   .tile .n{font-size:31px;font-weight:750;letter-spacing:-1.5px;line-height:1;}
   .tile .l{color:var(--muted);font-size:12px;margin-top:9px;}
@@ -66,8 +69,8 @@
   .console{background:var(--console);border-radius:13px;height:340px;overflow:auto;padding:15px 17px;
     font-family:var(--mono);font-size:12.5px;line-height:1.8;box-shadow:inset 0 1px 3px rgba(0,0,0,.5);}
   .console .row{display:flex;gap:10px;}
-  .console .t{color:#4a4660;}
-  .ok{color:#7ee9b0;} .fail{color:#fda4af;} .quota{color:#fcd34d;} .info{color:#9b95b8;}
+  .console .t{color:#4a4a52;}
+  .ok{color:#7ee9b0;} .fail{color:#fda4af;} .quota{color:#fcd34d;} .info{color:#9a9aa6;}
   .conhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
   .runstate{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);}
   .rdot{width:7px;height:7px;border-radius:50%;background:var(--faint);}
@@ -87,17 +90,19 @@
   .pill.on{background:rgba(74,222,128,.13);color:#86efac;} .pill.off{background:rgba(248,113,113,.13);color:#fca5a5;}
   .mini{margin-top:7px;display:flex;gap:8px;}
   .mini input{padding:10px 11px;font-size:12px;}
-  .btn{display:inline-flex;align-items:center;gap:7px;background:var(--violet);color:#fff;
-    border:none;padding:11px 16px;border-radius:9px;font-weight:600;font-size:12.5px;font-family:inherit;cursor:pointer;
-    transition:.13s;white-space:nowrap;}
-  .btn:hover{background:#7c4ddb;}
+  .btn{display:inline-flex;align-items:center;gap:7px;background:var(--chrome);color:#0a0a0b;
+    border:1px solid var(--chrome-edge);padding:11px 16px;border-radius:9px;font-weight:650;font-size:12.5px;font-family:inherit;cursor:pointer;
+    transition:.13s;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.65);position:relative;overflow:hidden;}
+  .btn::after{content:"";position:absolute;top:0;left:-65%;width:42%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);transition:left .55s ease;pointer-events:none;}
+  .btn:hover{filter:brightness(1.05);}
+  .btn:hover::after{left:135%;}
   .btn.sm{padding:9px 13px;}
   .btn.g{background:var(--surface2);color:var(--txt);box-shadow:var(--hi);}
 
   .acc{display:flex;align-items:center;gap:13px;background:var(--recess);border-radius:13px;padding:13px 15px;margin-bottom:9px;box-shadow:inset 0 1px 2px rgba(0,0,0,.3);}
   .acc-ava{flex:none;width:40px;height:40px;border-radius:10px;background:#26262a;display:grid;place-items:center;color:#d4d4d8;font-weight:700;font-size:16px;object-fit:cover;}
   .profile{display:flex;align-items:center;gap:11px;background:var(--recess);border-radius:12px;padding:10px 12px;margin:0 0 16px;box-shadow:inset 0 1px 2px rgba(0,0,0,.3);}
-  .profile img{width:40px;height:40px;border-radius:10px;background:#241d33;object-fit:cover;flex:none;}
+  .profile img{width:40px;height:40px;border-radius:10px;background:#26262a;object-fit:cover;flex:none;}
   .profile .pn{font-size:13px;font-weight:600;}
   .profile .pu{font-size:11.5px;color:var(--muted);font-family:var(--mono);margin-top:2px;}
   .profile .pb{margin-left:auto;font-size:10px;font-weight:600;background:rgba(52,211,153,.15);color:#6ee7b7;padding:3px 9px;border-radius:999px;}
@@ -112,7 +117,7 @@
   .rup-target{display:flex;gap:8px;align-items:center;}
   .rup-target input{width:220px;}
   .rpill{font-size:10.5px;padding:3px 9px;border-radius:999px;font-weight:600;margin-left:8px;}
-  .rpill.on{background:rgba(110,233,176,.15);color:#6ee7b7;} .rpill.off{background:rgba(160,130,240,.12);color:var(--muted);}
+  .rpill.on{background:rgba(110,233,176,.15);color:#6ee7b7;} .rpill.off{background:rgba(255,255,255,.06);color:var(--muted);}
   .warn{display:none;align-items:center;gap:7px;background:rgba(251,113,133,.1);color:#fda4af;font-size:11.5px;padding:8px 11px;border-radius:9px;margin-top:8px;}
   .seg{display:inline-flex;background:var(--recess);border-radius:9px;padding:2px;}
   .segbtn{background:none;border:none;color:var(--muted);font-family:inherit;font-size:12px;font-weight:600;padding:7px 12px;border-radius:7px;cursor:pointer;}
@@ -136,22 +141,22 @@
 
   .step{display:flex;gap:14px;padding:15px 0;}
   .step+.step{box-shadow:inset 0 1px 0 rgba(255,255,255,.035);}
-  .step .num{flex:none;width:28px;height:28px;border-radius:9px;background:var(--vdim);color:#d8b4fe;display:grid;place-items:center;font-weight:700;font-size:13px;}
+  .step .num{flex:none;width:28px;height:28px;border-radius:9px;background:var(--vdim);color:#d7dae2;display:grid;place-items:center;font-weight:700;font-size:13px;}
   .step .body{font-size:13px;color:var(--muted);line-height:1.6;}
   .step .body b{color:var(--txt);}
-  .step .body code{background:var(--recess);padding:1px 7px;border-radius:6px;font-family:var(--mono);font-size:11.5px;color:#c4b5fd;}
+  .step .body code{background:var(--recess);padding:1px 7px;border-radius:6px;font-family:var(--mono);font-size:11.5px;color:#d7dae2;}
   .faqq{font-size:13px;font-weight:600;margin:17px 0 5px;}
   .faqa{font-size:12.5px;color:var(--muted);line-height:1.65;}
-  .note{margin-top:16px;background:rgba(129,140,248,.08);border-radius:11px;padding:13px 15px;font-size:12px;color:#b9c0f5;box-shadow:var(--hi);}
+  .note{margin-top:16px;background:rgba(255,255,255,.05);border-left:2px solid var(--violet2);border-radius:11px;padding:13px 15px;font-size:12px;color:#c7cad2;box-shadow:var(--hi);}
   .guide-step{display:flex;gap:22px;align-items:center;padding:20px 0;}
   .guide-step+.guide-step{box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
-  .guide-art{flex:none;width:300px;background:#0c0a13;border-radius:12px;padding:6px;box-shadow:inset 0 1px 2px rgba(0,0,0,.45);}
+  .guide-art{flex:none;width:300px;background:#0c0c0e;border-radius:12px;padding:6px;box-shadow:inset 0 1px 2px rgba(0,0,0,.45);}
   .guide-art svg{width:100%;height:auto;display:block;}
   .guide-txt{flex:1;}
-  .gnum{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:8px;background:var(--vdim);color:#d8b4fe;font-weight:700;font-size:12px;margin-bottom:9px;}
+  .gnum{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:8px;background:var(--vdim);color:#d7dae2;font-weight:700;font-size:12px;margin-bottom:9px;}
   .guide-txt h3{margin:0 0 6px;font-size:15px;font-weight:650;letter-spacing:-.2px;}
   .guide-txt p{margin:0;color:var(--muted);font-size:13px;line-height:1.6;}
-  .guide-txt code{background:var(--recess);padding:1px 7px;border-radius:6px;font-family:var(--mono);font-size:11.5px;color:#c4b5fd;}
+  .guide-txt code{background:var(--recess);padding:1px 7px;border-radius:6px;font-family:var(--mono);font-size:11.5px;color:#d7dae2;}
   @media(max-width:780px){.guide-step{flex-direction:column;align-items:stretch;}.guide-art{width:100%;}}
   .shot-step{padding:16px 0;}
   .shot-step+.shot-step{box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
@@ -159,7 +164,7 @@
   .shot-head .gnum{margin-bottom:0;}
   .shot-head h3{margin:0;font-size:15px;font-weight:650;letter-spacing:-.2px;}
   .shot-step p{margin:7px 0 13px;color:var(--muted);font-size:13px;line-height:1.6;}
-  .shot-step p code{background:var(--recess);padding:1px 7px;border-radius:6px;font-family:var(--mono);font-size:11.5px;color:#c4b5fd;}
+  .shot-step p code{background:var(--recess);padding:1px 7px;border-radius:6px;font-family:var(--mono);font-size:11.5px;color:#d7dae2;}
   .shot{display:block;width:100%;max-width:780px;border-radius:10px;border:1px solid #262630;box-shadow:0 8px 22px rgba(0,0,0,.4);}
   #gate{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;place-items:center;}
   #gate.show{display:grid;}
@@ -168,9 +173,10 @@
   .gatecard h2{margin:0 0 7px;font-size:19px;font-weight:680;letter-spacing:-.3px;}
   .gatecard p{margin:0 0 22px;color:var(--muted);font-size:13px;line-height:1.55;}
   .gatecard .ava{width:60px;height:60px;border-radius:50%;margin:0 auto 14px;display:block;border:2px solid var(--violet);}
-  .dbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;background:var(--violet);color:#fff;border:none;
+  .dbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;background:#1c1d23;color:#fff;border:1px solid rgba(255,255,255,.1);
     font-family:inherit;font-weight:600;font-size:14px;padding:13px;border-radius:11px;cursor:pointer;text-decoration:none;}
-  .dbtn:hover{background:var(--violet2);}
+  .dbtn:hover{background:#24252c;border-color:rgba(255,255,255,.16);}
+  .dbtn svg,.sbtn.dc svg{flex:none;}
   .dbtn.ghost{background:var(--surface2);color:var(--txt);margin-top:10px;}
   .gskip{display:inline-block;margin-top:16px;color:var(--faint);font-size:12px;text-decoration:none;cursor:pointer;}
   .gskip:hover{color:var(--muted);}
@@ -183,25 +189,50 @@
     font-family:inherit;font-size:12.5px;font-weight:600;padding:10px;border-radius:10px;cursor:pointer;margin-bottom:9px;}
   .sbtn:hover{border-color:var(--violet);}
   .sbtn i{width:15px;height:15px;}
-  .sbtn.dc{background:var(--vdim);color:#c4b5fd;border-color:transparent;}
+  .sbtn.dc{background:#1c1d23;color:#fff;border-color:rgba(255,255,255,.1);}
+  .sbtn.dc:hover{background:#24252c;border-color:rgba(255,255,255,.16);}
+  #splash{position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .35s ease;}
+  #splash.hide{opacity:0;pointer-events:none;}
+  #splash .slogo{width:84px;height:84px;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.5);}
+  #splash .stitle{font-weight:800;letter-spacing:2px;font-size:22px;background:linear-gradient(110deg,#b6b6be 20%,#fff 50%,#b6b6be 80%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite;}
+  #splash .smsg{color:var(--muted);font-size:13px;display:flex;align-items:center;gap:9px;}
+  .spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.16);border-top-color:#d7dae2;border-radius:50%;animation:spinr .7s linear infinite;flex:none;}
+  @keyframes spinr{to{transform:rotate(360deg);}}
+  #splash .scard{display:none;background:var(--surface);border:1px solid #2a2a30;border-radius:16px;padding:22px 24px;max-width:460px;width:90vw;box-shadow:0 24px 60px rgba(0,0,0,.5);text-align:center;}
+  #splash .scard h3{margin:0 0 7px;font-size:16px;font-weight:680;}
+  #splash .scard .notes{margin:0 0 16px;color:var(--muted);font-size:12.5px;line-height:1.55;max-height:140px;overflow:auto;text-align:left;white-space:pre-wrap;}
+  #splash .srow{display:flex;gap:10px;justify-content:center;}
 </style>
 </head>
 <body>
   <div class="toast-wrap" id="toasts"></div>
+  <div id="splash">
+    <img src="/icon.png" class="slogo" alt="AssetFlow" />
+    <div class="stitle">ASSETFLOW</div>
+    <div class="smsg" id="splashMsg"><span class="spin"></span>Scanning for updates...</div>
+    <div class="scard" id="updCard">
+      <h3 id="updTitle">Update available</h3>
+      <div class="notes" id="updNotes"></div>
+      <div class="srow">
+        <button class="btn" id="updNow"><i data-lucide="download" style="width:14px;height:14px"></i>Update now</button>
+        <button class="btn g" id="updLater">Later</button>
+      </div>
+    </div>
+  </div>
   <div id="gate">
     <div class="gatecard" id="gateCard">
-      <img src="/icon.png" class="glogo" alt="Nexus" />
-      <h2 id="gateTitle">Sign in to Nexus</h2>
+      <img src="/icon.png" class="glogo" alt="AssetFlow" />
+      <h2 id="gateTitle">Sign in to AssetFlow</h2>
       <p id="gateSub">Connect your Discord account to access your dashboard.</p>
-      <a class="dbtn" id="gateAction" href="#"><i data-lucide="log-in"></i><span id="gateBtnLabel">Sign in with Discord</span></a>
+      <a class="dbtn" id="gateAction" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg><span id="gateBtnLabel">Sign in with Discord</span></a>
       <a class="gskip" id="gateSkip">Skip for now</a>
     </div>
   </div>
   <div class="app">
     <aside class="sidebar">
       <div class="logo-row">
-        <img src="/icon.png" class="logo-img" alt="Nexus" />
-        <div><div class="wordmark">NEXUS</div><div class="wordsub">Reuploader</div></div>
+        <img src="/icon.png" class="logo-img" alt="AssetFlow" />
+        <div><div class="wordmark">ASSETFLOW</div><div class="wordsub">Reuploader</div></div>
       </div>
       <nav>
         <button class="nav active" data-v="dashboard"><i data-lucide="layout-dashboard"></i>Dashboard</button>
@@ -211,9 +242,9 @@
       <div class="side-foot">
         <div class="me" id="meRow" style="display:none"><img id="meAva" src="" alt="" /><span class="mn" id="meName"></span><span class="lo" id="meLogout">Log out</span></div>
         <button class="sbtn" id="sideSignin" style="display:none"><i data-lucide="log-in"></i>Sign in with Discord</button>
-        <button class="sbtn dc" id="joinDiscord"><i data-lucide="message-circle"></i>Join our Discord</button>
+        <button class="sbtn dc" id="joinDiscord"><svg width="16" height="16" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>Join our Discord</button>
         <div class="conn"><span class="ring" id="ring"></span><span id="conn">Connected</span></div>
-        <div class="ver">v1.0</div>
+        <div class="ver" id="verLabel">v1.1.0</div>
       </div>
     </aside>
 
@@ -248,7 +279,9 @@
             </div>
           </div>
           <div class="warn" id="keyWarn"><i data-lucide="alert-triangle" style="width:14px;height:14px"></i><span>No API key set - add one under Credentials before uploading.</span></div>
-          <div class="warn" id="rupWarn"><i data-lucide="alert-triangle" style="width:14px;height:14px"></i><span>Open Roblox Studio and the Nexus plugin first, then this runs.</span></div>
+          <div class="warn" id="rupWarn"><i data-lucide="alert-triangle" style="width:14px;height:14px"></i><span>Open Roblox Studio and the AssetFlow plugin first, then this runs.</span></div>
+          <div class="warn" id="pluginUpdBanner" style="background:rgba(206,209,217,.09);color:#d7dae2;"><i data-lucide="arrow-up-circle" style="width:14px;height:14px"></i><span>A newer plugin is available.</span><button class="btn sm" id="updatePluginBtn" style="margin-left:auto">Update plugin</button></div>
+          <div class="note"><i data-lucide="info" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"></i>First time? Install the plugin from <b>Setup &amp; FAQ</b>, open your place in Studio, then pick a type above. AssetFlow fetches every unowned asset, reuploads it to your account, and swaps the new ids into your place automatically.</div>
         </div>
         <div class="row2">
           <div class="card">
@@ -271,6 +304,7 @@
             <div class="keyline" style="margin-top:8px"><div><div class="lab">Cookie</div><div class="sub">audio &amp; images only</div></div><span class="pill off" id="cookieBadge">not set</span></div>
             <div class="mini"><input id="cookie" type="password" placeholder="paste .ROBLOSECURITY"><button class="btn sm" onclick="save('cookie')">Save</button><button class="btn g sm" onclick="clearCred('cookie')">Clear</button></div>
             <div class="warn" id="cookieWarn"><i data-lucide="alert-triangle" style="width:14px;height:14px"></i><span>Cookie expired (you logged in elsewhere). Re-paste your current one.</span></div>
+            <div class="note"><i data-lucide="shield-check" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"></i>Keys and cookies never leave this machine. They're encrypted at rest with Windows DPAPI and only ever sent to Roblox's official APIs.</div>
           </div>
         </div>
       </section>
@@ -279,7 +313,7 @@
         <div class="phead"><h1>Connected Accounts</h1><p>Multiply your quota by rotating across accounts.</p></div>
         <div class="card" style="margin-bottom:16px">
           <h2><i data-lucide="layers"></i>Rotation pool</h2>
-          <p class="desc">Two roles, like the pros. <b>Uploaders</b> (Open Cloud key) take turns uploading - Roblox's audio quota is per account (100/month), so when one runs out Nexus moves to the next and every asset still lands in your game. <b>Downloaders</b> (cookie) take turns fetching - different accounts can access different assets, so adding alts reaches more.</p>
+          <p class="desc">Two roles, like the pros. <b>Uploaders</b> (Open Cloud key) take turns uploading - Roblox's audio quota is per account (100/month), so when one runs out AssetFlow moves to the next and every asset still lands in your game. <b>Downloaders</b> (cookie) take turns fetching - different accounts can access different assets, so adding alts reaches more.</p>
           <div id="accountList"></div>
         </div>
         <div class="card">
@@ -325,28 +359,28 @@
 
           <div class="shot-step">
             <div class="shot-head"><div class="gnum">4</div><h3>Copy your key</h3></div>
-            <p><b>Copy the key now</b> &mdash; Roblox shows it only once. Keep it private and never share it with anyone.</p>
+            <p><b>Copy the key now.</b> Roblox shows it only once. Keep it private and never share it with anyone.</p>
             <img class="shot" src="/faq/04-key.png" alt="Copy your API key" loading="lazy" />
           </div>
 
           <div class="shot-step">
-            <div class="shot-head"><div class="gnum">5</div><h3>Add it to Nexus and set your target</h3></div>
+            <div class="shot-head"><div class="gnum">5</div><h3>Add it to AssetFlow and set your target</h3></div>
             <p>Paste the key into <b>Credentials</b> on the Dashboard and Save. Choose <b>My profile</b> or <b>A group</b> (enter the group id), then Save. Pool several keys under <b>Accounts</b> to beat the monthly quota.</p>
-            <img class="shot" src="/faq/05-app.png" alt="Set your reupload target in Nexus" loading="lazy" />
+            <img class="shot" src="/faq/05-app.png" alt="Set your reupload target in AssetFlow" loading="lazy" />
           </div>
 
           <div class="shot-step">
             <div class="shot-head"><div class="gnum">6</div><h3>Install the plugin and reupload</h3></div>
-            <p>Click <b>Install plugin</b> to drop it into your Studio plugins folder automatically, then restart Studio. (Manual way: copy <code>NexusReuploader.rbxmx</code> into <code>%LOCALAPPDATA%\Roblox\Plugins</code>.) Then open the <b>Nexus Reuploader</b> plugin, pick <b>Animation / Audio / Image</b>, and hit <b>Reupload</b> &mdash; new ids swap into your place automatically.</p>
+            <p>Click <b>Install plugin</b> to drop it into your Studio plugins folder automatically, then restart Studio. (Manual way: copy <code>AssetFlowReuploader.rbxmx</code> into <code>%LOCALAPPDATA%\Roblox\Plugins</code>.) Then open the <b>AssetFlow Reuploader</b> plugin, pick <b>Animation / Audio / Image</b>, and hit <b>Reupload</b>. New ids swap into your place automatically.</p>
             <button class="btn" id="installPlugin" style="margin-bottom:13px"><i data-lucide="download"></i>Install plugin</button>
             <img class="shot" src="/faq/06-download.png" alt="Plugin download files" loading="lazy" />
           </div>
-          <div class="note">Your API key gives access only to the permissions you pick. Never share it. Nexus stores it only on this machine and sends it only to Roblox, it is never shared with anyone.</div>
+          <div class="note">Your API key gives access only to the permissions you pick. Never share it. AssetFlow stores it only on this machine and sends it only to Roblox, it is never shared with anyone.</div>
         </div>
         <div class="card">
           <h2><i data-lucide="help-circle"></i>FAQ</h2>
           <div class="faqq">Why does audio sometimes stop partway?</div>
-          <div class="faqa">Roblox caps audio uploads at 100/month per account. Nexus detects the cap and rotates to your next account automatically. Add more under Accounts to keep going.</div>
+          <div class="faqa">Roblox caps audio uploads at 100/month per account. AssetFlow detects the cap and rotates to your next account automatically. Add more under Accounts to keep going.</div>
           <div class="faqq">Do I need the cookie?</div>
           <div class="faqa">Yes - every type (animations, sounds, images, meshes) is pulled from the asset CDN using your cookie, so a valid cookie is required. Note: logging into Roblox in your browser expires the saved cookie, so re-paste it if reuploads start failing.</div>
           <div class="faqq">Is my account safe?</div>
@@ -356,7 +390,7 @@
           <div class="faqq">Where do the new ids go?</div>
           <div class="faqa">They're swapped in automatically across instances, image properties, value objects, attributes, and script source, all under one Undo in Studio.</div>
           <div class="faqq">Can I add more than one account?</div>
-          <div class="faqa">Yes. Add several under Accounts and Nexus rotates to the next when one hits its monthly quota, so you can keep going.</div>
+          <div class="faqa">Yes. Add several under Accounts and AssetFlow rotates to the next when one hits its monthly quota, so you can keep going.</div>
         </div>
       </section>
     </main>
@@ -374,8 +408,8 @@
     const iv=setInterval(async()=>{
       tries++;
       let s={}; try{ s=await fetch('/session').then(r=>r.json()); }catch(e){}
-      if(s&&s.loggedIn){ clearInterval(iv); sessionStorage.removeItem('nexusSkip'); loadSession(); toast('Signed in as '+s.username,'ok'); }
-      else if(tries>40){ clearInterval(iv); $('gateTitle').textContent='Sign in to Nexus'; $('gateSub').textContent='That timed out. Click to try again.'; }
+      if(s&&s.loggedIn){ clearInterval(iv); sessionStorage.removeItem('assetflowSkip'); loadSession(); toast('Signed in as '+s.username,'ok'); }
+      else if(tries>40){ clearInterval(iv); $('gateTitle').textContent='Sign in to AssetFlow'; $('gateSub').textContent='That timed out. Click to try again.'; }
     },1500);
   }
   async function loadSession(){
@@ -394,15 +428,15 @@
       if(s.avatarUrl){ $('meAva').src=s.avatarUrl; $('meAva').style.display=''; } else { $('meAva').style.display='none'; }
     } else {
       $('meRow').style.display='none'; $('sideSignin').style.display='flex';
-      if(sessionStorage.getItem('nexusSkip')==='1'){ gate.classList.remove('show'); } else { gate.classList.add('show'); }
+      if(sessionStorage.getItem('assetflowSkip')==='1'){ gate.classList.remove('show'); } else { gate.classList.add('show'); }
     }
     lucide.createIcons();
   }
   document.addEventListener('DOMContentLoaded',()=>{
-    $('gateSkip').addEventListener('click',()=>{ sessionStorage.setItem('nexusSkip','1'); loadSession(); });
-    $('meLogout').addEventListener('click',async()=>{ try{ await fetch('/discord/logout',{method:'POST'}); }catch(e){} sessionStorage.removeItem('nexusSkip'); location.reload(); });
+    $('gateSkip').addEventListener('click',()=>{ sessionStorage.setItem('assetflowSkip','1'); loadSession(); });
+    $('meLogout').addEventListener('click',async()=>{ try{ await fetch('/discord/logout',{method:'POST'}); }catch(e){} sessionStorage.removeItem('assetflowSkip'); location.reload(); });
     $('gateAction').addEventListener('click',(e)=>{ e.preventDefault(); startSignin(); });
-    $('sideSignin').addEventListener('click',()=>{ sessionStorage.removeItem('nexusSkip'); $('gate').classList.add('show'); startSignin(); });
+    $('sideSignin').addEventListener('click',()=>{ sessionStorage.removeItem('assetflowSkip'); $('gate').classList.add('show'); startSignin(); });
     $('joinDiscord').addEventListener('click',()=>{ fetch('/discord/invite').catch(()=>{}); });
     $('installPlugin').addEventListener('click',async()=>{
       const b=$('installPlugin'); b.disabled=true;
@@ -519,6 +553,8 @@
       const pc=!!s.pluginConnected; pluginOn=pc;
       $('pluginPill').className='rpill '+(pc?'on':'off'); $('pluginPill').textContent=pc?'plugin connected':'plugin offline';
       $('rupWarn').style.display=pc?'none':'flex';
+      $('pluginUpdBanner').style.display=(pc&&s.pluginOutdated)?'flex':'none';
+      if(s.appVersion) $('verLabel').textContent='v'+s.appVersion;
       if(!loadedTarget){ loadedTarget=true; if(s.creatorId){ tgt=s.isGroup?'group':'user'; $('rup-creator').value=s.creatorId; } setTgtUI(); }
       $('rdot').className='rdot'+(s.busy?' go':''); $('busy').textContent=s.busy?'Working…':'Idle';
       $('stopBtn').style.display=s.busy?'inline-flex':'none';
@@ -544,6 +580,46 @@
       }
     }catch(e){}
   }
+  function hideSplash(){ const s=$('splash'); if(!s) return; s.classList.add('hide'); setTimeout(()=>{ s.style.display='none'; },380); }
+  async function scanUpdates(){
+    const msg=$('splashMsg'), card=$('updCard');
+    let acted=false;
+    const safety=setTimeout(()=>{ if(!acted){ acted=true; hideSplash(); } },6000);
+    try{
+      const u=await (await fetch('/update/check')).json();
+      if(u && u.hasUpdate && u.url){
+        acted=true; clearTimeout(safety);
+        msg.style.display='none';
+        $('updTitle').textContent='Update available  -  v'+u.latest;
+        $('updNotes').textContent=(u.notes&&u.notes.trim())?u.notes.trim().slice(0,700):'A new version of AssetFlow Reuploader is ready to install.';
+        card.style.display='block';
+        if(window.lucide) lucide.createIcons();
+        $('updLater').onclick=hideSplash;
+        $('updNow').onclick=async()=>{
+          card.querySelector('.srow').style.display='none';
+          $('updTitle').textContent='Updating AssetFlow...';
+          $('updNotes').innerHTML='<span class="spin" style="display:inline-block;vertical-align:-2px;margin-right:8px"></span>Downloading the latest version. The app restarts automatically when it is ready.';
+          try{
+            const aj=await (await fetch('/update/apply',{method:'POST'})).json();
+            if(!aj.ok) throw new Error(aj.error||'update failed');
+          }catch(e){
+            $('updTitle').textContent='Update failed';
+            $('updNotes').textContent=String(e.message||e)+'  -  keep using this version, or grab the latest from GitHub.';
+            const row=card.querySelector('.srow'); row.style.display='flex'; $('updNow').style.display='none'; $('updLater').textContent='Continue';
+          }
+        };
+        return;
+      }
+    }catch(e){}
+    if(!acted){ acted=true; clearTimeout(safety); hideSplash(); }
+  }
+  $('updatePluginBtn').addEventListener('click',async()=>{
+    const b=$('updatePluginBtn'); b.disabled=true;
+    try{ const r=await fetch('/install-plugin'); if(r.ok){ await r.json(); toast('Plugin updated. Restart Studio to load it.','ok'); } else { toast('Update failed: '+(await r.text()),'fail'); } }
+    catch(e){ toast('Update failed','fail'); }
+    b.disabled=false;
+  });
+  scanUpdates();
   poll(); whoami(); setInterval(poll,1500); setInterval(whoami,15000);
 </script>
 </body>

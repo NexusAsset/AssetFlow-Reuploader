@@ -64,7 +64,7 @@ func (u *Uploader) buildBody(assetType string, data []byte, name string, isGroup
 	reqJSON, _ := json.Marshal(map[string]any{
 		"assetType":       assetType,
 		"displayName":     truncate(name, 50),
-		"description":     "Reuploaded via Nexus 💜",
+		"description":     "Reuploaded via AssetFlow 📎",
 		"creationContext": map[string]any{"creator": creator},
 	})
 	contentType, filename := mimeFor(assetType)

@@ -32,10 +32,16 @@ var iconPNG []byte
 //go:embed faq/*.png
 var faqFS embed.FS
 
-//go:embed NexusReuploader.rbxmx
+//go:embed AssetFlowReuploader.rbxmx
 var pluginRBXMX []byte
 
 const defaultKnownPlacesURL = "https://nexus-known-places.chatjust984.workers.dev"
+
+const (
+	appVersion        = "1.1.0"
+	pluginVersion     = "1.1.0"
+	defaultUpdateRepo = "NexusAsset/AssetFlow-Reuploader"
+)
 
 func main() {
 	enableANSIColors()
@@ -75,6 +81,11 @@ func main() {
 	connToken := loadOrCreateSecret(connectorSecretPath())
 	srv.SetConnectorToken(connToken)
 	srv.SetFailCache(failcache.Load("failcache.json"))
+	updRepo := cfg["update_repo"]
+	if strings.TrimSpace(updRepo) == "" {
+		updRepo = defaultUpdateRepo
+	}
+	srv.SetVersionInfo(appVersion, pluginVersion, updRepo)
 
 	mux := srv.Routes()
 	registerDiscordAuth(mux, port)
@@ -89,8 +100,8 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		p := filepath.Join(dir, "NexusReuploader.rbxmx")
-		out := bytes.ReplaceAll(pluginRBXMX, []byte("NEXUS_CONNECTOR_TOKEN"), []byte(connToken))
+		p := filepath.Join(dir, "AssetFlowReuploader.rbxmx")
+		out := bytes.ReplaceAll(pluginRBXMX, []byte("ASSETFLOW_CONNECTOR_TOKEN"), []byte(connToken))
 		if err := os.WriteFile(p, out, 0o644); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -123,7 +134,7 @@ func main() {
 			time.Sleep(80 * time.Millisecond)
 		}
 	}
-	if !openWindow(url, "Nexus Reuploader") {
+	if !openWindow(url, "AssetFlow Reuploader") {
 		openBrowser(url)
 		if !running {
 			select {}
@@ -184,7 +195,7 @@ func openBrowser(url string) {
 
 func connectorSecretPath() string {
 	if dir, err := os.UserConfigDir(); err == nil {
-		d := filepath.Join(dir, "NexusReuploader")
+		d := filepath.Join(dir, "AssetFlowReuploader")
 		if os.MkdirAll(d, 0o700) == nil {
 			return filepath.Join(d, "connector.secret")
 		}
