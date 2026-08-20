@@ -10,7 +10,7 @@ Re-upload Roblox **animations, audio, images, and meshes** you don't own to your
 
 **[Download the latest release](../../releases/latest):**
 
-- **Windows** — `AssetFlowReuploader-v1.1.0.zip` (or the bare `AssetFlowReuploader.exe`)
+- **Windows** — `AssetFlowReuploader-v1.1.1.zip` (or the bare `AssetFlowReuploader.exe`)
 - **macOS (beta)** — `assetflow-mac-arm64` (Apple Silicon) or `assetflow-mac-amd64` (Intel)
 
 The app checks for updates on launch ("Scanning for updates") and updates itself, and the plugin, in one click.
@@ -71,7 +71,7 @@ In Studio, open the **AssetFlow Reuploader** plugin, pick **Animation / Audio / 
 Each release ships a `CHECKSUM.txt` with **SHA-256** hashes. To confirm your download wasn't tampered with:
 
 ```powershell
-Get-FileHash .\AssetFlowReuploader-v1.1.0.zip -Algorithm SHA256
+Get-FileHash .\AssetFlowReuploader-v1.1.1.zip -Algorithm SHA256
 ```
 
 The result should match the value in `CHECKSUM.txt`.

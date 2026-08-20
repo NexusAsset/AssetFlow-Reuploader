@@ -38,7 +38,7 @@ var pluginRBXMX []byte
 const defaultKnownPlacesURL = "https://nexus-known-places.chatjust984.workers.dev"
 
 const (
-	appVersion        = "1.1.0"
+	appVersion        = "1.1.1"
 	pluginVersion     = "1.1.0"
 	defaultUpdateRepo = "NexusAsset/AssetFlow-Reuploader"
 )
@@ -46,19 +46,17 @@ const (
 func main() {
 	enableANSIColors()
 	cfg := loadConfig("config.ini")
+	if len(cfg) == 0 {
+		if exe, err := os.Executable(); err == nil {
+			cfg = loadConfig(filepath.Join(filepath.Dir(exe), "config.ini"))
+		}
+	}
 
-	keyPath := cfg["apikey_file"]
-	if keyPath == "" {
-		keyPath = "apikey.txt"
-	}
-	cookiePath := cfg["cookie_file"]
-	if cookiePath == "" {
-		cookiePath = "cookie.txt"
-	}
-	accountsPath := cfg["accounts_file"]
-	if accountsPath == "" {
-		accountsPath = "accounts.json"
-	}
+	dd := dataDir()
+	server.SetDataDir(dd)
+	keyPath := dataPath(dd, cfg["apikey_file"], "apikey.txt")
+	cookiePath := dataPath(dd, cfg["cookie_file"], "cookie.txt")
+	accountsPath := dataPath(dd, cfg["accounts_file"], "accounts.json")
 	port := 38073
 	if p, ok := cfg["port"]; ok {
 		if n, err := strconv.Atoi(strings.TrimSpace(p)); err == nil {
@@ -80,7 +78,7 @@ func main() {
 	}
 	connToken := loadOrCreateSecret(connectorSecretPath())
 	srv.SetConnectorToken(connToken)
-	srv.SetFailCache(failcache.Load("failcache.json"))
+	srv.SetFailCache(failcache.Load(dataPath(dd, "", "failcache.json")))
 	updRepo := cfg["update_repo"]
 	if strings.TrimSpace(updRepo) == "" {
 		updRepo = defaultUpdateRepo
@@ -193,18 +191,34 @@ func openBrowser(url string) {
 	}
 }
 
-func connectorSecretPath() string {
+func dataDir() string {
 	if dir, err := os.UserConfigDir(); err == nil {
 		d := filepath.Join(dir, "AssetFlowReuploader")
 		if os.MkdirAll(d, 0o700) == nil {
-			return filepath.Join(d, "connector.secret")
+			return d
 		}
 	}
 	if exe, err := os.Executable(); err == nil {
-		return filepath.Join(filepath.Dir(exe), "connector.secret")
+		return filepath.Dir(exe)
 	}
-	return "connector.secret"
+	return "."
 }
+
+func dataPath(dir, override, name string) string {
+	if p := strings.TrimSpace(override); p != "" {
+		return p
+	}
+	p := filepath.Join(dir, name)
+	if _, err := os.Stat(p); err == nil {
+		return p
+	}
+	if b, err := os.ReadFile(name); err == nil && len(b) > 0 {
+		_ = os.WriteFile(p, b, 0o600)
+	}
+	return p
+}
+
+func connectorSecretPath() string { return filepath.Join(dataDir(), "connector.secret") }
 
 func loadOrCreateSecret(path string) string {
 	if b, err := os.ReadFile(path); err == nil {

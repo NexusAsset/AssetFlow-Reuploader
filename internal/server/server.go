@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -99,6 +100,16 @@ type targetPref struct {
 
 const targetFile = "target.json"
 
+var dataDir = "."
+
+func SetDataDir(d string) {
+	if d = strings.TrimSpace(d); d != "" {
+		dataDir = d
+	}
+}
+
+func dataFile(name string) string { return filepath.Join(dataDir, name) }
+
 type job struct {
 	AssetType string `json:"assetType"`
 	SkipOwned bool   `json:"skipOwned"`
@@ -112,7 +123,7 @@ func New(up *opencloud.Uploader, dl *download.Downloader, store *accounts.Store,
 		sp = spoofer.NewWithBackend(kpURL, kpKey)
 	}
 	s := &Server{up: up, dl: dl, sp: sp, store: store, keyPath: keyPath, cookiePath: cookiePath}
-	if b, err := os.ReadFile(targetFile); err == nil {
+	if b, err := os.ReadFile(dataFile(targetFile)); err == nil {
 		_ = json.Unmarshal(b, &s.target)
 	}
 	return s
@@ -160,6 +171,11 @@ func fileHasContent(p string) bool { return readTrim(p) != "" }
 // writeSecret stores a credential encrypted at rest (DPAPI on Windows),
 // tagged with a magic prefix so reads can tell sealed from legacy plaintext.
 func writeSecret(p, val string) error {
+	if d := filepath.Dir(p); d != "" && d != "." {
+		if err := os.MkdirAll(d, 0o700); err != nil {
+			return err
+		}
+	}
 	data := append([]byte(secretMagic), secretSeal([]byte(strings.TrimSpace(val)))...)
 	return os.WriteFile(p, data, 0o600)
 }
@@ -209,7 +225,11 @@ func (s *Server) handleTarget(w http.ResponseWriter, r *http.Request) {
 	s.target = t
 	s.mu.Unlock()
 	b, _ := json.Marshal(t)
-	_ = os.WriteFile(targetFile, b, 0o600)
+	if err := os.WriteFile(dataFile(targetFile), b, 0o600); err != nil {
+		s.push("error", "Could not save the target: "+err.Error())
+		writeJSON(w, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
 	writeJSON(w, map[string]any{"ok": true})
 }
 
@@ -321,21 +341,64 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	var failed []string
 	if body.ClearKey {
-		_ = os.Remove(s.keyPath)
-		s.push("info", "API key cleared.")
+		if err := clearSecret(s.keyPath); err != nil {
+			failed = append(failed, s.pushSaveError("API key", s.keyPath, err))
+		} else {
+			s.push("info", "API key cleared.")
+		}
 	} else if body.ApiKey != nil && strings.TrimSpace(*body.ApiKey) != "" {
-		_ = writeSecret(s.keyPath, *body.ApiKey)
-		s.push("info", "API key saved.")
+		if err := saveSecret(s.keyPath, *body.ApiKey); err != nil {
+			failed = append(failed, s.pushSaveError("API key", s.keyPath, err))
+		} else {
+			s.push("info", "API key saved.")
+		}
 	}
 	if body.ClearCookie {
-		_ = os.Remove(s.cookiePath)
-		s.push("info", "Cookie cleared.")
+		if err := clearSecret(s.cookiePath); err != nil {
+			failed = append(failed, s.pushSaveError("cookie", s.cookiePath, err))
+		} else {
+			s.push("info", "Cookie cleared.")
+		}
 	} else if body.Cookie != nil && strings.TrimSpace(*body.Cookie) != "" {
-		_ = writeSecret(s.cookiePath, *body.Cookie)
-		s.push("info", "Cookie saved.")
+		if err := saveSecret(s.cookiePath, *body.Cookie); err != nil {
+			failed = append(failed, s.pushSaveError("cookie", s.cookiePath, err))
+		} else {
+			s.push("info", "Cookie saved.")
+		}
+	}
+	if len(failed) > 0 {
+		writeJSON(w, map[string]any{"ok": false, "error": strings.Join(failed, " ")})
+		return
 	}
 	writeJSON(w, map[string]any{"ok": true})
+}
+
+func (s *Server) pushSaveError(what, path string, err error) string {
+	msg := "Could not save your " + what + " to " + path + " - " + err.Error()
+	s.push("error", msg)
+	return msg
+}
+
+func saveSecret(p, val string) error {
+	if err := writeSecret(p, val); err != nil {
+		return err
+	}
+	if !fileHasContent(p) {
+		return errors.New("the file was written but read back empty (antivirus or sync software may be removing it)")
+	}
+	return nil
+}
+
+func clearSecret(p string) error {
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if fileHasContent(p) {
+		return errors.New("the file is still there after deleting it")
+	}
+	return nil
 }
 
 func (s *Server) handleWhoAmI(w http.ResponseWriter, r *http.Request) {

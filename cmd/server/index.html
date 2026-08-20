@@ -468,9 +468,17 @@
 
   async function save(which){
     const el=$(which), val=el.value.trim(); if(!val) return;
-    await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(which==='apiKey'?{apiKey:val}:{cookie:val})});
+    const label=(which==='apiKey'?'API key':'Cookie');
+    let j={};
+    try{
+      const r=await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(which==='apiKey'?{apiKey:val}:{cookie:val})});
+      j=await r.json();
+      if(!r.ok) j={ok:false,error:'the app returned '+r.status};
+    }catch(e){ j={ok:false,error:String(e)}; }
+    if(j.ok===false){ toast(j.error||('Could not save your '+label.toLowerCase()),'err'); poll(); return; }
     el.value='';
-    toast((which==='apiKey'?'API key':'Cookie')+' saved');
+    toast(label+' saved');
+    poll();
     if(which==='cookie') setTimeout(whoami,300);
   }
   function toggleType(){ accType=accType==='user'?'group':'user'; $('acc-type').textContent=accType==='user'?'User':'Group'; }
